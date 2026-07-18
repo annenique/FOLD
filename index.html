@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLD — Protein Structure Explorer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#050a14;overflow:hidden;font-family:'Courier New',monospace;color:#f1f5f9;}
+canvas{display:block;}
+
+/* ===== SHARED ===== */
+.panel{background:rgba(5,10,20,0.93);border:1px solid rgba(255,255,255,0.1);border-radius:10px;backdrop-filter:blur(10px);}
+.tag{font-size:9px;padding:2px 8px;border-radius:8px;display:inline-block;letter-spacing:0.05em;}
+.tag-green{background:rgba(52,211,153,0.15);color:#34d399;border:1px solid #34d399;}
+.tag-blue{background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid #60a5fa;}
+.tag-yellow{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid #fbbf24;}
+.tag-red{background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;}
+.tag-purple{background:rgba(167,139,250,0.15);color:#c4b5fd;border:1px solid #a78bfa;}
+.back-btn{padding:5px 14px;border:1px solid #334155;border-radius:5px;background:transparent;color:#94a3b8;font-size:10px;cursor:pointer;font-family:inherit;margin-left:auto;}
+.back-btn:hover{border-color:#a78bfa;color:#a78bfa;}
+
+/* ===== HOME ===== */
+#homeScreen{position:fixed;inset:0;z-index:200;background:radial-gradient(ellipse at 50% 25%,#0d1f3c,#050a14);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;overflow-y:auto;}
+#homeScreen h1{font-size:clamp(36px,7vw,72px);letter-spacing:0.25em;font-weight:normal;background:linear-gradient(135deg,#a78bfa,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px;}
+.home-sub{font-size:12px;color:#94a3b8;letter-spacing:0.12em;margin-bottom:20px;}
+.module-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:780px;width:100%;margin-bottom:16px;}
+.module-card{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.1);border-radius:14px;padding:20px 16px;cursor:pointer;transition:all 0.22s;text-align:left;}
+.module-card:hover{transform:translateY(-3px);border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.06);}
+.mc-mod{font-size:9px;color:#64748b;letter-spacing:0.15em;margin-bottom:8px;}
+.mc-icon{font-size:28px;margin-bottom:7px;}
+.mc-name{font-size:15px;font-weight:bold;color:#f1f5f9;margin-bottom:4px;}
+.mc-desc{font-size:11px;color:#cbd5e1;line-height:1.55;margin-bottom:10px;}
+.mc-pills{display:flex;gap:5px;flex-wrap:wrap;}
+
+/* ===== MODULE 1 ===== */
+#module1Screen{position:fixed;inset:0;z-index:150;display:none;flex-direction:column;}
+#m1Home{position:fixed;inset:0;z-index:160;background:radial-gradient(ellipse at 50% 25%,#0d1f3c,#050a14);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
+#m1Home h2{font-size:clamp(22px,4vw,44px);letter-spacing:0.2em;font-weight:normal;color:#a78bfa;margin-bottom:6px;}
+#m1Home p{font-size:12px;color:#94a3b8;margin-bottom:20px;}
+.protein-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;max-width:900px;width:100%;margin-bottom:14px;}
+.protein-card{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px;cursor:pointer;transition:all 0.22s;text-align:left;}
+.protein-card:hover{border-color:rgba(167,139,250,0.55);background:rgba(167,139,250,0.07);transform:translateY(-2px);}
+.pc-num{font-size:9px;color:#64748b;letter-spacing:0.15em;margin-bottom:5px;}
+.pc-icon{font-size:24px;margin-bottom:5px;}
+.pc-name{font-size:13px;font-weight:bold;color:#f1f5f9;margin-bottom:2px;}
+.pc-aka{font-size:10px;color:#94a3b8;margin-bottom:7px;}
+.pc-concept{font-size:10px;color:#cbd5e1;line-height:1.5;margin-bottom:8px;}
+.pc-levels{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;}
+.pc-stats{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;}
+.pc-stat{font-size:9px;padding:2px 6px;border-radius:7px;background:rgba(255,255,255,0.07);color:#cbd5e1;border:1px solid rgba(255,255,255,0.1);}
+.pc-disease{font-size:9px;padding:2px 8px;border-radius:8px;display:inline-block;}
+.diff-2{background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid #60a5fa;}
+.diff-3{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid #fbbf24;}
+.diff-4{background:rgba(249,115,22,0.15);color:#f97316;border:1px solid #f97316;}
+.diff-5{background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;}
+
+#m1Game{position:fixed;inset:0;z-index:155;display:none;}
+#m1TopBar{position:fixed;top:0;left:0;right:0;z-index:170;background:rgba(5,10,20,0.93);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:14px;padding:9px 16px;}
+.m1-brand{font-size:12px;letter-spacing:0.18em;color:#a78bfa;}
+.m1-protein{font-size:12px;color:#f1f5f9;font-weight:bold;}
+.m1-level-label{font-size:10px;color:#94a3b8;}
+#m1fps{font-size:9px;color:#1e293b;}
+#m1IntBar{position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:170;background:rgba(5,10,20,0.93);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 16px;text-align:center;min-width:260px;pointer-events:none;}
+.ib-label{font-size:9px;letter-spacing:0.15em;color:#a78bfa;margin-bottom:5px;}
+.ib-track{width:100%;height:7px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin-bottom:4px;}
+#integrityFill{height:100%;width:100%;border-radius:4px;transition:width 0.5s,background 0.5s;background:#4ade80;}
+.ib-status{font-size:10px;color:#94a3b8;}#integrityStatus{color:#4ade80;font-weight:bold;}
+#structLevels{position:fixed;top:50px;left:14px;z-index:170;display:flex;flex-direction:column;gap:5px;pointer-events:none;}
+.slevel-badge{font-size:9px;padding:4px 10px;border-radius:6px;border:1px solid;letter-spacing:0.06em;}
+#bodyLocation{position:fixed;top:50px;right:14px;z-index:170;background:rgba(5,10,20,0.93);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 13px;max-width:200px;pointer-events:none;}
+#bodyLocation h4{font-size:9px;letter-spacing:0.12em;color:#a78bfa;margin-bottom:6px;}
+#bodyLocationText{font-size:10px;color:#cbd5e1;line-height:1.55;}
+#aaPanel{position:fixed;top:140px;left:14px;z-index:170;padding:12px;width:210px;pointer-events:auto;max-height:calc(100vh - 200px);overflow-y:auto;}
+#aaPanel h3{font-size:9px;letter-spacing:0.15em;color:#a78bfa;margin-bottom:9px;}
+.aa-group-title{font-size:9px;color:#64748b;margin:7px 0 4px;text-transform:uppercase;letter-spacing:0.08em;}
+.aa-chip{display:inline-block;padding:3px 6px;border-radius:5px;font-size:9px;margin:2px;cursor:pointer;border:1px solid transparent;transition:all 0.18s;}
+.aa-chip:hover{transform:scale(1.1);}
+.chip-nonpolar{background:rgba(251,191,36,0.18);color:#fde68a;border-color:rgba(251,191,36,0.4);}
+.chip-polar{background:rgba(96,165,250,0.18);color:#bfdbfe;border-color:rgba(96,165,250,0.4);}
+.chip-acidic{background:rgba(239,68,68,0.18);color:#fca5a5;border-color:rgba(239,68,68,0.4);}
+.chip-basic{background:rgba(52,211,153,0.18);color:#6ee7b7;border-color:rgba(52,211,153,0.4);}
+#aaDetail{margin-top:8px;padding:9px;background:rgba(255,255,255,0.05);border-radius:7px;border:1px solid rgba(255,255,255,0.09);display:none;}
+#aaDetail .ad-name{font-size:12px;font-weight:bold;color:#f1f5f9;margin-bottom:2px;}
+#aaDetail .ad-code{font-size:10px;color:#94a3b8;margin-bottom:5px;}
+#aaDetail .ad-fact{font-size:10px;color:#cbd5e1;line-height:1.55;}
+#paramPanel{position:fixed;top:140px;right:14px;z-index:170;padding:13px;width:220px;pointer-events:auto;}
+#paramPanel h3{font-size:9px;letter-spacing:0.15em;color:#a78bfa;margin-bottom:11px;}
+.param-row{margin-bottom:12px;}
+.param-header{display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-bottom:4px;}
+.param-val{color:#f1f5f9;font-weight:bold;}
+.param-slider{-webkit-appearance:none;width:100%;height:4px;background:rgba(255,255,255,0.12);border-radius:2px;outline:none;cursor:pointer;}
+.param-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#a78bfa;cursor:pointer;}
+.param-effect{font-size:10px;color:#cbd5e1;margin-top:3px;line-height:1.4;}
+#mutationBtn{width:100%;padding:8px;border:1px solid #ef4444;border-radius:7px;background:rgba(239,68,68,0.1);color:#fca5a5;font-size:10px;letter-spacing:0.07em;cursor:pointer;font-family:inherit;margin-top:5px;transition:all 0.22s;}
+#mutationBtn:hover{background:rgba(239,68,68,0.2);}
+#mutationBtn.active{background:rgba(239,68,68,0.28);}
+#mutationInfo{font-size:10px;color:#fca5a5;margin-top:5px;line-height:1.5;display:none;}
+#infoBar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:170;padding:0;max-width:500px;width:88%;pointer-events:auto;overflow:hidden;}
+#infoBarHeader{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;}
+#infoBarHeader .ib-title{font-size:10px;letter-spacing:0.1em;color:#a78bfa;font-weight:bold;}
+#infoBarToggle{font-size:10px;color:#64748b;}
+#infoBarBody{padding:10px 14px 12px;display:none;border-top:1px solid rgba(255,255,255,0.07);}
+#infoBarWhat{font-size:11px;color:#f1f5f9;line-height:1.65;margin-bottom:7px;}
+#infoBarWhy{font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:7px;padding:7px 9px;background:rgba(167,139,250,0.08);border-radius:6px;border-left:2px solid #a78bfa;}
+#infoBarFacts{display:flex;gap:4px;flex-wrap:wrap;}
+.ib-fact-chip{font-size:9px;padding:2px 7px;border-radius:7px;background:rgba(255,255,255,0.08);color:#cbd5e1;border:1px solid rgba(255,255,255,0.1);}
+#legend{position:fixed;bottom:12px;left:14px;z-index:170;padding:9px 12px;pointer-events:none;}
+#legend h4{font-size:8px;letter-spacing:0.12em;color:#64748b;margin-bottom:6px;}
+.lg-row{display:flex;align-items:center;gap:5px;font-size:10px;color:#cbd5e1;margin-bottom:4px;}
+.lg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* ===== MODULE 2: BUILD LAB ===== */
+#module2Screen{position:fixed;inset:0;z-index:140;display:none;flex-direction:column;}
+#buildTopBar{position:fixed;top:0;left:0;right:0;z-index:155;background:rgba(5,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:14px;padding:9px 16px;}
+.build-brand{font-size:12px;letter-spacing:0.18em;color:#34d399;}
+#buildPalette{position:fixed;top:48px;left:0;bottom:0;width:190px;z-index:150;background:rgba(5,10,20,0.97);border-right:1px solid rgba(255,255,255,0.07);overflow-y:auto;padding:12px 10px;}
+#buildPalette h3{font-size:9px;letter-spacing:0.15em;color:#34d399;margin-bottom:9px;}
+.build-group{margin-bottom:10px;}
+.build-group-title{font-size:9px;color:#64748b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;}
+.draggable-aa{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:6px;margin-bottom:3px;cursor:grab;border:1px solid transparent;transition:all 0.16s;user-select:none;}
+.draggable-aa:hover{transform:translateX(3px);}
+.draggable-aa:active{cursor:grabbing;}
+.daa-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.daa-name{font-size:10px;color:#f1f5f9;}
+.daa-code{font-size:9px;color:#64748b;margin-left:auto;}
+.daa-nonpolar{background:rgba(251,191,36,0.12);border-color:rgba(251,191,36,0.22);}
+.daa-polar{background:rgba(96,165,250,0.12);border-color:rgba(96,165,250,0.22);}
+.daa-acidic{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.22);}
+.daa-basic{background:rgba(52,211,153,0.12);border-color:rgba(52,211,153,0.22);}
+#buildCanvas{position:fixed;top:48px;left:190px;right:260px;bottom:0;z-index:145;background:rgba(2,6,12,0.92);overflow:hidden;}
+#buildDropZone{width:100%;height:100%;position:relative;}
+#buildInstructions{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
+#buildInstructions p{font-size:13px;color:#334155;line-height:2;}
+#buildInstructions .bi-icon{font-size:44px;margin-bottom:10px;display:block;}
+.aa-node{position:absolute;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#f1f5f9;cursor:move;border:2px solid transparent;user-select:none;z-index:2;font-family:'Courier New',monospace;transition:box-shadow 0.2s;}
+.aa-node:hover{box-shadow:0 0 10px rgba(255,255,255,0.22);}
+#chainSvg{position:absolute;inset:0;pointer-events:none;z-index:1;}
+#buildAnalysis{position:fixed;top:48px;right:0;width:260px;bottom:0;z-index:150;background:rgba(5,10,20,0.97);border-left:1px solid rgba(255,255,255,0.07);overflow-y:auto;padding:13px;}
+#buildAnalysis h3{font-size:9px;letter-spacing:0.15em;color:#34d399;margin-bottom:12px;}
+.analysis-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:11px;margin-bottom:9px;}
+.ac-title{font-size:9px;letter-spacing:0.1em;color:#94a3b8;margin-bottom:7px;text-transform:uppercase;}
+.ac-value{font-size:20px;font-weight:bold;margin-bottom:3px;}
+.ac-desc{font-size:10px;color:#cbd5e1;line-height:1.5;}
+.meter-bar{height:7px;border-radius:4px;overflow:hidden;margin:5px 0;}
+.meter-fill{height:100%;border-radius:4px;transition:all 0.4s;}
+.meter-labels{display:flex;justify-content:space-between;font-size:8px;color:#475569;}
+#chainList{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.chain-chip{font-size:9px;padding:2px 5px;border-radius:5px;color:#f1f5f9;border:1px solid transparent;}
+#buildActions{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.build-btn{padding:8px;border-radius:7px;font-size:10px;letter-spacing:0.07em;cursor:pointer;font-family:inherit;border:1px solid;transition:all 0.2s;}
+#clearBtn{border-color:#ef4444;color:#fca5a5;background:rgba(239,68,68,0.08);}#clearBtn:hover{background:rgba(239,68,68,0.18);}
+#analyzeBtn{border-color:#34d399;color:#6ee7b7;background:rgba(52,211,153,0.08);}#analyzeBtn:hover{background:rgba(52,211,153,0.18);}
+#structureSuggestion{background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.25);border-radius:8px;padding:9px;margin-top:9px;font-size:10px;color:#e2e8f0;line-height:1.6;display:none;}
+#structureSuggestion strong{color:#c4b5fd;display:block;margin-bottom:3px;font-size:9px;letter-spacing:0.08em;}
+
+/* ===== MODULE 3: MATCHING ===== */
+#module3Screen{position:fixed;inset:0;z-index:130;display:none;flex-direction:column;background:#050a14;}
+#m3TopBar{position:fixed;top:0;left:0;right:0;z-index:145;background:rgba(5,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:12px;padding:9px 16px;flex-wrap:wrap;}
+.m3-brand{font-size:12px;letter-spacing:0.18em;color:#f59e0b;}
+#m3Filters{display:flex;gap:6px;}
+.m3-filter{padding:4px 10px;border-radius:6px;font-size:9px;letter-spacing:0.07em;cursor:pointer;font-family:inherit;border:1px solid #334155;color:#64748b;background:transparent;transition:all 0.2s;}
+.m3-filter.active-np{border-color:#fbbf24;color:#fbbf24;background:rgba(251,191,36,0.12);}
+.m3-filter.active-po{border-color:#60a5fa;color:#60a5fa;background:rgba(96,165,250,0.12);}
+.m3-filter.active-ac{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,0.12);}
+.m3-filter.active-ba{border-color:#34d399;color:#34d399;background:rgba(52,211,153,0.12);}
+.m3-filter.active-all{border-color:#a78bfa;color:#a78bfa;background:rgba(167,139,250,0.12);}
+#m3DiffBar{display:flex;gap:5px;}
+.diff-btn{padding:4px 10px;border-radius:6px;font-size:9px;letter-spacing:0.08em;cursor:pointer;font-family:inherit;border:1px solid #334155;color:#64748b;background:transparent;transition:all 0.2s;}
+.diff-btn.active{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,0.1);}
+#m3Score{font-size:12px;color:#f1f5f9;white-space:nowrap;}
+#m3Timer{font-size:12px;color:#fbbf24;min-width:55px;text-align:right;}
+
+#m3Body{position:fixed;top:50px;left:0;right:0;bottom:0;z-index:135;display:grid;grid-template-columns:1fr 1fr;overflow:hidden;}
+#m3Left{padding:16px;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.07);}
+#m3Right{padding:16px;overflow-y:auto;}
+#m3Left h3,#m3Right h3{font-size:9px;letter-spacing:0.15em;color:#f59e0b;margin-bottom:12px;}
+
+/* Structure cards with SVG diagram */
+.match-struct{background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:12px;}
+.match-struct:hover{border-color:rgba(245,158,11,0.5);background:rgba(245,158,11,0.05);}
+.match-struct.selected{border-color:#f59e0b;background:rgba(245,158,11,0.08);}
+.match-struct.correct{border-color:#4ade80;background:rgba(74,222,128,0.07);cursor:default;pointer-events:none;}
+.match-struct.wrong{border-color:#ef4444;background:rgba(239,68,68,0.07);}
+.struct-svg-wrap{width:90px;height:90px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.struct-info{flex:1;}
+.struct-prop-tag{font-size:9px;color:#64748b;margin-bottom:3px;}
+.struct-charge{font-size:10px;margin-top:3px;}
+
+/* Name cards */
+.match-name{background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.1);border-radius:8px;padding:11px 14px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;}
+.match-name:hover{border-color:rgba(245,158,11,0.5);background:rgba(245,158,11,0.05);}
+.match-name.selected{border-color:#f59e0b;background:rgba(245,158,11,0.08);}
+.match-name.correct{border-color:#4ade80;background:rgba(74,222,128,0.07);cursor:default;pointer-events:none;}
+.match-name.wrong{border-color:#ef4444;background:rgba(239,68,68,0.07);}
+.mn-name{font-size:13px;color:#f1f5f9;margin-bottom:2px;font-weight:bold;}
+.mn-sub{font-size:10px;color:#94a3b8;}
+
+#m3InfoPanel{position:fixed;bottom:0;left:0;right:0;z-index:145;background:rgba(5,10,20,0.97);border-top:1px solid rgba(255,255,255,0.09);padding:14px 20px;display:none;max-height:32vh;overflow-y:auto;}
+#m3InfoPanel h4{font-size:11px;color:#f59e0b;margin-bottom:8px;}
+.m3-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+.m3-info-item{font-size:10px;color:#cbd5e1;line-height:1.6;}
+.m3-info-item strong{color:#a78bfa;display:block;margin-bottom:2px;font-size:9px;letter-spacing:0.05em;}
+#m3NextBtn{display:block;margin:10px auto 0;padding:7px 22px;border:1px solid #f59e0b;border-radius:6px;background:transparent;color:#fbbf24;font-size:11px;letter-spacing:0.08em;cursor:pointer;font-family:inherit;}
+#m3NextBtn:hover{background:rgba(245,158,11,0.12);}
+#m3Hint{font-size:10px;color:#fbbf24;padding:7px 10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:6px;margin:8px 16px;display:none;line-height:1.5;position:fixed;bottom:0;left:0;right:0;z-index:146;}
+#m3Complete{position:fixed;inset:0;z-index:160;background:rgba(5,10,20,0.97);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#m3Complete h2{font-size:38px;color:#f59e0b;letter-spacing:0.15em;margin-bottom:10px;font-weight:normal;}
+.final-score{font-size:50px;font-weight:bold;color:#f1f5f9;margin:10px 0;}
+#m3Complete p{font-size:13px;color:#94a3b8;margin-bottom:5px;max-width:380px;line-height:1.65;}
+.m3-action-btn{margin-top:18px;padding:11px 28px;border:1.5px solid #f59e0b;border-radius:8px;background:rgba(245,158,11,0.1);color:#fbbf24;font-size:12px;letter-spacing:0.1em;cursor:pointer;font-family:inherit;transition:all 0.22s;}
+.m3-action-btn:hover{background:rgba(245,158,11,0.2);}
+
+/* ===== MODULE 4: GLYCOLYSIS ===== */
+#module4Screen{position:fixed;inset:0;z-index:120;display:none;flex-direction:column;background:#050a14;}
+#m4TopBar{position:fixed;top:0;left:0;right:0;z-index:135;background:rgba(5,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:14px;padding:9px 16px;}
+.m4-brand{font-size:12px;letter-spacing:0.18em;color:#f97316;}
+#m4Score{font-size:12px;color:#f1f5f9;}
+#m4Progress{font-size:11px;color:#94a3b8;}
+#m4Body{position:fixed;top:48px;left:0;right:0;bottom:0;z-index:125;display:grid;grid-template-columns:280px 1fr;overflow:hidden;}
+#m4MolPool{background:rgba(5,10,20,0.97);border-right:1px solid rgba(255,255,255,0.07);padding:14px 12px;overflow-y:auto;}
+#m4MolPool h3{font-size:9px;letter-spacing:0.15em;color:#f97316;margin-bottom:10px;}
+.mol-card{background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:grab;transition:all 0.2s;user-select:none;}
+.mol-card:hover{border-color:rgba(249,115,22,0.5);background:rgba(249,115,22,0.06);}
+.mol-card.used{opacity:0.35;cursor:default;pointer-events:none;}
+.mol-name{font-size:12px;color:#f1f5f9;font-weight:bold;margin-bottom:2px;}
+.mol-formula{font-size:10px;color:#94a3b8;font-family:'Courier New',monospace;}
+#m4Pathway{padding:20px;overflow-y:auto;}
+#m4Pathway h3{font-size:9px;letter-spacing:0.15em;color:#f97316;margin-bottom:16px;}
+.pathway-steps{display:flex;flex-direction:column;gap:0;}
+.pathway-step{display:flex;align-items:center;gap:12px;margin-bottom:0;}
+.step-slot{background:rgba(255,255,255,0.03);border:2px dashed rgba(255,255,255,0.12);border-radius:8px;padding:12px 16px;min-width:200px;min-height:52px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;position:relative;}
+.step-slot:hover{border-color:rgba(249,115,22,0.4);background:rgba(249,115,22,0.05);}
+.step-slot.drag-over{border-color:#f97316;background:rgba(249,115,22,0.1);}
+.step-slot.filled{border-style:solid;border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);cursor:default;}
+.step-slot.correct{border-color:#4ade80;background:rgba(74,222,128,0.08);}
+.step-slot.wrong-slot{border-color:#ef4444;background:rgba(239,68,68,0.08);}
+.slot-num{font-size:10px;color:#475569;position:absolute;top:4px;left:8px;letter-spacing:0.08em;}
+.slot-content{font-size:12px;color:#f1f5f9;font-weight:bold;text-align:center;}
+.slot-empty-hint{font-size:10px;color:#334155;}
+.step-arrow{font-size:18px;color:#475569;flex-shrink:0;}
+.step-info{flex:1;min-width:0;}
+.step-reaction{font-size:10px;color:#94a3b8;line-height:1.5;}
+.step-enzyme{font-size:9px;color:#64748b;margin-top:2px;}
+.step-popup-btn{font-size:9px;padding:2px 8px;border:1px solid #64748b;border-radius:4px;background:transparent;color:#64748b;cursor:pointer;font-family:inherit;margin-top:4px;transition:all 0.2s;}
+.step-popup-btn:hover{border-color:#f97316;color:#f97316;}
+#m4CheckBtn{display:block;margin:20px auto;padding:10px 28px;border:1.5px solid #f97316;border-radius:8px;background:rgba(249,115,22,0.1);color:#fdba74;font-size:12px;letter-spacing:0.1em;cursor:pointer;font-family:inherit;transition:all 0.22s;}
+#m4CheckBtn:hover{background:rgba(249,115,22,0.2);}
+#m4Complete{position:fixed;inset:0;z-index:140;background:rgba(5,10,20,0.97);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#m4Complete h2{font-size:36px;color:#f97316;letter-spacing:0.15em;margin-bottom:10px;font-weight:normal;}
+
+/* ===== SCIENCE POPUP ===== */
+#sciPopup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);background:rgba(5,10,20,0.98);border:1px solid rgba(167,139,250,0.4);border-radius:12px;padding:24px 26px;max-width:420px;width:90%;z-index:300;opacity:0;pointer-events:none;transition:all 0.3s;text-align:center;backdrop-filter:blur(14px);}
+#sciPopup.vis{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto;}
+#sciPopup .sp-icon{font-size:30px;margin-bottom:8px;}
+#sciPopup .sp-title{font-size:12px;color:#c4b5fd;letter-spacing:0.1em;margin-bottom:9px;font-weight:bold;}
+#sciPopup .sp-body{font-size:11px;color:#e2e8f0;line-height:1.75;margin-bottom:8px;white-space:pre-line;text-align:left;}
+#sciPopup .sp-src{font-size:10px;color:#475569;font-style:italic;margin-bottom:14px;}
+#sciPopup button{padding:8px 22px;border:1px solid #a78bfa;border-radius:6px;background:transparent;color:#c4b5fd;font-size:11px;letter-spacing:0.08em;cursor:pointer;font-family:inherit;}
+#sciPopup button:hover{background:rgba(167,139,250,0.12);}
+
+@media(max-width:768px){
+  .module-grid{grid-template-columns:1fr 1fr;}
+  #aaPanel,#legend{display:none;}
+  #m4Body{grid-template-columns:1fr;}
+  #m4MolPool{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="homeScreen">
+  <h1>F O L D</h1>
+  <p class="home-sub">Protein Biology · Interactive Learning Tool</p>
+  <div class="module-grid">
+    <div class="module-card" id="goM1">
+      <div class="mc-mod">MODULE 01</div><div class="mc-icon">🔬</div>
+      <div class="mc-name">Protein Explorer</div>
+      <div class="mc-desc">Explore 4 real proteins in 3D. Rotate, zoom, apply mutations, change temperature & pH. Watch denaturation happen.</div>
+      <div class="mc-pills"><span class="tag tag-purple">4 Proteins</span><span class="tag tag-blue">3D Orbit</span><span class="tag tag-red">Mutations</span></div>
+    </div>
+    <div class="module-card" id="goM2">
+      <div class="mc-mod">MODULE 02</div><div class="mc-icon">🧪</div>
+      <div class="mc-name">Build Your Protein</div>
+      <div class="mc-desc">Drag & drop all 20 amino acids. Watch live analysis: charge, hydrophobicity, and predicted structure type.</div>
+      <div class="mc-pills"><span class="tag tag-green">20 AAs</span><span class="tag tag-yellow">Live Analysis</span><span class="tag tag-blue">Structure Predict</span></div>
+    </div>
+    <div class="module-card" id="goM3">
+      <div class="mc-mod">MODULE 03</div><div class="mc-icon">🎯</div>
+      <div class="mc-name">Amino Acid Match</div>
+      <div class="mc-desc">View molecular side-chain structures. Click to match the correct name. Filter by property. Three difficulty levels.</div>
+      <div class="mc-pills"><span class="tag tag-yellow">All 20 AAs</span><span class="tag tag-red">Timed</span><span class="tag tag-purple">Filter Toggle</span></div>
+    </div>
+    <div class="module-card" id="goM4">
+      <div class="mc-mod">MODULE 04</div><div class="mc-icon">⚡</div>
+      <div class="mc-name">Glycolysis Pathway</div>
+      <div class="mc-desc">Drag molecules into the correct order of the 10-step glycolysis pathway. Learn what happens at each step.</div>
+      <div class="mc-pills"><span class="tag tag-yellow">10 Steps</span><span class="tag tag-green">Drag & Drop</span><span class="tag tag-blue">Science Popups</span></div>
+    </div>
+  </div>
+  <p style="font-size:10px;color:#334155;letter-spacing:0.08em;">Built for the Ujima Lab · Interactive protein biology</p>
+</div>
+
+<!-- MODULE 1 -->
+<div id="module1Screen">
+  <div id="m1Home">
+    <h2>PROTEIN EXPLORER</h2>
+    <p>Choose a protein · Drag to rotate · Scroll to zoom</p>
+    <div class="protein-grid">
+      <div class="protein-card" data-level="antibody">
+        <div class="pc-num">PROTEIN 01</div><div class="pc-icon">🛡️</div>
+        <div class="pc-name">IMMUNOGLOBULIN G</div><div class="pc-aka">IgG · Y-shaped immune defense</div>
+        <div class="pc-concept">Y-shape held by disulfide bonds. Variable loops recognize antigens with precision.</div>
+        <div class="pc-levels"><span class="tag tag-blue">1° Sequence</span><span class="tag tag-red">2° β-Sheet</span><span class="tag tag-yellow">3° Domain fold</span><span class="tag tag-purple">4° Y-tetramer</span></div>
+        <div class="pc-stats"><span class="pc-stat">1,320 AA</span><span class="pc-stat">4 chains</span><span class="pc-stat">150 kDa</span></div>
+        <div class="pc-disease diff-2">⚠️ Autoimmune Disease</div>
+      </div>
+      <div class="protein-card" data-level="insulin">
+        <div class="pc-num">PROTEIN 02</div><div class="pc-icon">⚡</div>
+        <div class="pc-name">INSULIN</div><div class="pc-aka">Pancreatic hormone · glucose regulation</div>
+        <div class="pc-concept">51 AA hormone locked by 3 disulfide bonds. Controls blood sugar in all humans.</div>
+        <div class="pc-levels"><span class="tag tag-blue">1° Sequence</span><span class="tag tag-red">2° α-Helix</span><span class="tag tag-yellow">3° Disulfide-locked</span></div>
+        <div class="pc-stats"><span class="pc-stat">51 AA</span><span class="pc-stat">2 chains</span><span class="pc-stat">5.8 kDa</span></div>
+        <div class="pc-disease diff-3">⚠️ Diabetes (537M people)</div>
+      </div>
+      <div class="protein-card" data-level="collagen">
+        <div class="pc-num">PROTEIN 03</div><div class="pc-icon">🧱</div>
+        <div class="pc-name">COLLAGEN</div><div class="pc-aka">Triple helix · 30% of body protein</div>
+        <div class="pc-concept">Rope-like triple helix. Every 3rd AA must be Glycine. Requires Vitamin C.</div>
+        <div class="pc-levels"><span class="tag tag-blue">1° Gly-X-Y repeat</span><span class="tag tag-red">2° Poly-Pro helix</span><span class="tag tag-purple">3°/4° Triple helix</span></div>
+        <div class="pc-stats"><span class="pc-stat">~1,400 AA/chain</span><span class="pc-stat">Triple helix</span><span class="pc-stat">300 kDa</span></div>
+        <div class="pc-disease diff-4">⚠️ Scurvy · Brittle Bones</div>
+      </div>
+      <div class="protein-card" data-level="prion">
+        <div class="pc-num">PROTEIN 04</div><div class="pc-icon">☠️</div>
+        <div class="pc-name">PRION PROTEIN</div><div class="pc-aka">PrPᶜ → PrPˢᶜ · conformational disease</div>
+        <div class="pc-concept">Same sequence, two shapes. Misfolded form converts normal proteins — no DNA needed.</div>
+        <div class="pc-levels"><span class="tag tag-blue">1° Identical sequence</span><span class="tag tag-red">2° α→β conversion</span><span class="tag tag-yellow">3° Aggregation</span></div>
+        <div class="pc-stats"><span class="pc-stat">253 AA</span><span class="pc-stat">1 chain</span><span class="pc-stat">35 kDa</span></div>
+        <div class="pc-disease diff-5">☠️ CJD · Mad Cow · 100% fatal</div>
+      </div>
+    </div>
+    <button class="back-btn" id="m1HomeBack" style="margin:0 auto;">← Back to Home</button>
+  </div>
+  <div id="m1Game">
+    <div id="m1TopBar">
+      <div class="m1-brand">FOLD</div>
+      <div><div class="m1-protein" id="proteinName">—</div><div class="m1-level-label" id="levelLabel">—</div></div>
+      <div id="m1fps">— fps</div>
+      <button class="back-btn" id="m1GameBack">← Proteins</button>
+    </div>
+    <div id="m1IntBar">
+      <div class="ib-label">STRUCTURAL INTEGRITY</div>
+      <div class="ib-track"><div id="integrityFill"></div></div>
+      <div class="ib-status">Status: <span id="integrityStatus">Fully Folded</span></div>
+    </div>
+    <div id="structLevels"></div>
+    <div id="bodyLocation" class="panel"><h4>📍 FOUND IN THE BODY</h4><div id="bodyLocationText">—</div></div>
+    <div id="aaPanel" class="panel">
+      <h3>AMINO ACID EXPLORER</h3>
+      <div class="aa-group-title">Nonpolar</div>
+      <span class="aa-chip chip-nonpolar" data-aa="Gly">Gly</span><span class="aa-chip chip-nonpolar" data-aa="Ala">Ala</span><span class="aa-chip chip-nonpolar" data-aa="Val">Val</span><span class="aa-chip chip-nonpolar" data-aa="Leu">Leu</span><span class="aa-chip chip-nonpolar" data-aa="Ile">Ile</span><span class="aa-chip chip-nonpolar" data-aa="Phe">Phe</span><span class="aa-chip chip-nonpolar" data-aa="Trp">Trp</span><span class="aa-chip chip-nonpolar" data-aa="Met">Met</span><span class="aa-chip chip-nonpolar" data-aa="Pro">Pro</span>
+      <div class="aa-group-title">Polar</div>
+      <span class="aa-chip chip-polar" data-aa="Ser">Ser</span><span class="aa-chip chip-polar" data-aa="Thr">Thr</span><span class="aa-chip chip-polar" data-aa="Cys">Cys</span><span class="aa-chip chip-polar" data-aa="Tyr">Tyr</span><span class="aa-chip chip-polar" data-aa="Asn">Asn</span><span class="aa-chip chip-polar" data-aa="Gln">Gln</span>
+      <div class="aa-group-title">Acidic (−)</div>
+      <span class="aa-chip chip-acidic" data-aa="Asp">Asp</span><span class="aa-chip chip-acidic" data-aa="Glu">Glu</span>
+      <div class="aa-group-title">Basic (+)</div>
+      <span class="aa-chip chip-basic" data-aa="Lys">Lys</span><span class="aa-chip chip-basic" data-aa="Arg">Arg</span><span class="aa-chip chip-basic" data-aa="His">His</span>
+      <div id="aaDetail"><div class="ad-name" id="adName">—</div><div class="ad-code" id="adCode">—</div><div class="ad-fact" id="adFact">—</div></div>
+    </div>
+    <div id="paramPanel" class="panel">
+      <h3>CHANGE CONDITIONS</h3>
+      <div class="param-row"><div class="param-header">🌡️ Temperature <span class="param-val" id="tempVal">37°C</span></div><input type="range" class="param-slider" id="tempSlider" min="0" max="100" value="37"><div class="param-effect" id="tempEffect">Normal body temperature.</div></div>
+      <div class="param-row"><div class="param-header">⚗️ pH <span class="param-val" id="pHVal">7.4</span></div><input type="range" class="param-slider" id="pHSlider" min="0" max="14" value="7.4" step="0.1"><div class="param-effect" id="pHEffect">Physiological pH.</div></div>
+      <div class="param-row"><div class="param-header">🧂 Salt <span class="param-val" id="saltVal">150mM</span></div><input type="range" class="param-slider" id="saltSlider" min="0" max="500" value="150"><div class="param-effect" id="saltEffect">Physiological ionic strength.</div></div>
+      <button id="mutationBtn" data-active="false">⚡ APPLY MUTATION</button>
+      <div id="mutationInfo"></div>
+    </div>
+    <div id="infoBar" class="panel">
+      <div id="infoBarHeader" onclick="toggleInfoBar()"><div class="ib-title" id="infoBarTitle">PROTEIN OVERVIEW</div><div id="infoBarToggle">▲ expand</div></div>
+      <div id="infoBarBody"><div id="infoBarWhat"></div><div id="infoBarWhy"></div><div id="infoBarFacts"></div></div>
+    </div>
+    <div id="legend" class="panel">
+      <h4>STRUCTURE COLORS</h4>
+      <div class="lg-row"><div class="lg-dot" style="background:#ef4444"></div>α-Helix</div>
+      <div class="lg-row"><div class="lg-dot" style="background:#60a5fa"></div>β-Sheet</div>
+      <div class="lg-row"><div class="lg-dot" style="background:#fbbf24"></div>Loop/Coil</div>
+      <div class="lg-row"><div class="lg-dot" style="background:#a78bfa"></div>Active Site</div>
+      <div class="lg-row"><div class="lg-dot" style="background:#f97316"></div>Cofactor</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODULE 2: BUILD LAB -->
+<div id="module2Screen">
+  <div id="buildTopBar">
+    <div class="build-brand">FOLD</div>
+    <div style="font-size:12px;color:#f1f5f9;font-weight:bold;">🧪 BUILD YOUR PROTEIN</div>
+    <button class="back-btn" id="buildBackBtn">← Home</button>
+  </div>
+  <div id="buildPalette">
+    <h3>AMINO ACIDS</h3>
+    <div class="build-group">
+      <div class="build-group-title">🟡 Nonpolar</div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Gly" data-prop="nonpolar" data-charge="0" data-hydro="0.4"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Glycine</span><span class="daa-code">Gly</span></div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Ala" data-prop="nonpolar" data-charge="0" data-hydro="1.8"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Alanine</span><span class="daa-code">Ala</span></div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Val" data-prop="nonpolar" data-charge="0" data-hydro="4.2"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Valine</span><span class="daa-code">Val</span></div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Leu" data-prop="nonpolar" data-charge="0" data-hydro="3.8"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Leucine</span><span class="daa-code">Leu</span></div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Ile" data-prop="nonpolar" data-charge="0" data-hydro="4.5"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Isoleucine</span><span class="daa-code">Ile</span></div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Phe" data-prop="nonpolar" data-charge="0" data-hydro="2.8"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Phe</span><span class="daa-code">Phe</span></div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Trp" data-prop="nonpolar" data-charge="0" data-hydro="-0.9"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Tryptophan</span><span class="daa-code">Trp</span></div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Met" data-prop="nonpolar" data-charge="0" data-hydro="1.9"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Methionine</span><span class="daa-code">Met</span></div>
+      <div class="draggable-aa daa-nonpolar" draggable="true" data-aa="Pro" data-prop="nonpolar" data-charge="0" data-hydro="-1.6"><div class="daa-dot" style="background:#fbbf24"></div><span class="daa-name">Proline</span><span class="daa-code">Pro</span></div>
+    </div>
+    <div class="build-group">
+      <div class="build-group-title">🔵 Polar</div>
+      <div class="draggable-aa daa-polar" draggable="true" data-aa="Ser" data-prop="polar" data-charge="0" data-hydro="-0.8"><div class="daa-dot" style="background:#60a5fa"></div><span class="daa-name">Serine</span><span class="daa-code">Ser</span></div>
+      <div class="draggable-aa daa-polar" draggable="true" data-aa="Thr" data-prop="polar" data-charge="0" data-hydro="-0.7"><div class="daa-dot" style="background:#60a5fa"></div><span class="daa-name">Threonine</span><span class="daa-code">Thr</span></div>
+      <div class="draggable-aa daa-polar" draggable="true" data-aa="Cys" data-prop="polar" data-charge="0" data-hydro="2.5"><div class="daa-dot" style="background:#60a5fa"></div><span class="daa-name">Cysteine</span><span class="daa-code">Cys</span></div>
+      <div class="draggable-aa daa-polar" draggable="true" data-aa="Tyr" data-prop="polar" data-charge="0" data-hydro="-1.3"><div class="daa-dot" style="background:#60a5fa"></div><span class="daa-name">Tyrosine</span><span class="daa-code">Tyr</span></div>
+      <div class="draggable-aa daa-polar" draggable="true" data-aa="Asn" data-prop="polar" data-charge="0" data-hydro="-3.5"><div class="daa-dot" style="background:#60a5fa"></div><span class="daa-name">Asparagine</span><span class="daa-code">Asn</span></div>
+      <div class="draggable-aa daa-polar" draggable="true" data-aa="Gln" data-prop="polar" data-charge="0" data-hydro="-3.5"><div class="daa-dot" style="background:#60a5fa"></div><span class="daa-name">Glutamine</span><span class="daa-code">Gln</span></div>
+    </div>
+    <div class="build-group">
+      <div class="build-group-title">🔴 Acidic (−)</div>
+      <div class="draggable-aa daa-acidic" draggable="true" data-aa="Asp" data-prop="acidic" data-charge="-1" data-hydro="-3.5"><div class="daa-dot" style="background:#ef4444"></div><span class="daa-name">Aspartate</span><span class="daa-code">Asp</span></div>
+      <div class="draggable-aa daa-acidic" draggable="true" data-aa="Glu" data-prop="acidic" data-charge="-1" data-hydro="-3.5"><div class="daa-dot" style="background:#ef4444"></div><span class="daa-name">Glutamate</span><span class="daa-code">Glu</span></div>
+    </div>
+    <div class="build-group">
+      <div class="build-group-title">🟢 Basic (+)</div>
+      <div class="draggable-aa daa-basic" draggable="true" data-aa="Lys" data-prop="basic" data-charge="1" data-hydro="-3.9"><div class="daa-dot" style="background:#34d399"></div><span class="daa-name">Lysine</span><span class="daa-code">Lys</span></div>
+      <div class="draggable-aa daa-basic" draggable="true" data-aa="Arg" data-prop="basic" data-charge="1" data-hydro="-4.5"><div class="daa-dot" style="background:#34d399"></div><span class="daa-name">Arginine</span><span class="daa-code">Arg</span></div>
+      <div class="draggable-aa daa-basic" draggable="true" data-aa="His" data-prop="basic" data-charge="0.5" data-hydro="-3.2"><div class="daa-dot" style="background:#34d399"></div><span class="daa-name">Histidine</span><span class="daa-code">His</span></div>
+    </div>
+  </div>
+  <div id="buildCanvas"><div id="buildDropZone"><svg id="chainSvg" width="100%" height="100%"></svg><div id="buildInstructions"><span class="bi-icon">🧬</span><p>Drag amino acids here<br>to build your protein chain</p><p style="font-size:11px;margin-top:6px;color:#1e293b;">Drag nodes to reposition · Right-click to delete</p></div></div></div>
+  <div id="buildAnalysis">
+    <h3>LIVE ANALYSIS</h3>
+    <div class="analysis-card"><div class="ac-title">Net Charge</div><div class="ac-value" id="chargeValue" style="color:#94a3b8">0</div><div class="meter-bar" style="background:rgba(255,255,255,0.08)"><div class="meter-fill" id="chargeFill" style="width:0%;background:#94a3b8"></div></div><div class="meter-labels"><span>Acidic (−)</span><span>Neutral</span><span>Basic (+)</span></div><div class="ac-desc" id="chargeDesc">Add amino acids to begin.</div></div>
+    <div class="analysis-card"><div class="ac-title">Hydrophobicity</div><div class="ac-value" id="hydroValue" style="color:#94a3b8">—</div><div class="meter-bar" style="background:rgba(255,255,255,0.08)"><div class="meter-fill" id="hydroFill" style="width:0%"></div></div><div class="meter-labels"><span>Hydrophilic</span><span>Neutral</span><span>Hydrophobic</span></div><div class="ac-desc" id="hydroDesc">—</div></div>
+    <div class="analysis-card"><div class="ac-title">Predicted Solubility</div><div class="ac-value" id="solValue" style="color:#94a3b8;font-size:14px">—</div><div class="ac-desc" id="solDesc">—</div></div>
+    <div class="analysis-card"><div class="ac-title">Composition</div><div class="ac-desc" id="compositionDesc">—</div><div id="chainList"></div></div>
+    <div class="analysis-card"><div class="ac-title">Predicted Structure</div><div class="ac-value" id="structurePredict" style="color:#a78bfa;font-size:14px">—</div><div class="ac-desc" id="structureDesc">Add ≥ 4 amino acids.</div></div>
+    <div id="structureSuggestion"></div>
+    <div id="buildActions"><button class="build-btn" id="analyzeBtn">🔬 FULL ANALYSIS</button><button class="build-btn" id="clearBtn">🗑️ CLEAR CHAIN</button></div>
+  </div>
+</div>
+
+<!-- MODULE 3: MATCHING -->
+<div id="module3Screen">
+  <div id="m3TopBar">
+    <div class="m3-brand">FOLD · MATCH</div>
+    <div id="m3Filters">
+      <button class="m3-filter active-all" data-filter="all">ALL</button>
+      <button class="m3-filter" data-filter="nonpolar">🟡 NONPOLAR</button>
+      <button class="m3-filter" data-filter="polar">🔵 POLAR</button>
+      <button class="m3-filter" data-filter="acidic">🔴 ACIDIC</button>
+      <button class="m3-filter" data-filter="basic">🟢 BASIC</button>
+    </div>
+    <div id="m3DiffBar">
+      <button class="diff-btn active" data-diff="easy">EASY</button>
+      <button class="diff-btn" data-diff="medium">MED</button>
+      <button class="diff-btn" data-diff="hard">HARD</button>
+    </div>
+    <div id="m3Score">Score: <span id="m3ScoreVal">0</span></div>
+    <div id="m3Timer">⏱ <span id="m3TimerVal">0:00</span></div>
+    <button class="back-btn" id="m3BackBtn">← Home</button>
+  </div>
+  <div id="m3Body">
+    <div id="m3Left"><h3>AMINO ACID STRUCTURES — click to select</h3><div id="m3StructList"></div></div>
+    <div id="m3Right"><h3>NAMES — click to match</h3><div id="m3NameList"></div></div>
+  </div>
+  <div id="m3Hint"></div>
+  <div id="m3InfoPanel">
+    <h4 id="m3InfoTitle">—</h4>
+    <div class="m3-info-grid" id="m3InfoGrid"></div>
+    <button id="m3NextBtn">NEXT →</button>
+  </div>
+  <div id="m3Complete">
+    <h2>ROUND COMPLETE!</h2>
+    <div class="final-score" id="m3FinalScore">—</div>
+    <p id="m3FinalMsg">—</p><p id="m3FinalTime">—</p>
+    <button class="m3-action-btn" id="m3PlayAgain">▶ Play Again</button>
+    <button class="m3-action-btn" id="m3GoHome" style="margin-top:8px;">← Home</button>
+  </div>
+</div>
+
+<!-- MODULE 4: GLYCOLYSIS -->
+<div id="module4Screen">
+  <div id="m4TopBar">
+    <div class="m4-brand">FOLD · GLYCOLYSIS</div>
+    <div id="m4Progress" style="font-size:11px;color:#94a3b8;">Drag molecules into the correct pathway order</div>
+    <div id="m4Score">Steps correct: <span id="m4ScoreVal" style="color:#f97316;font-weight:bold">0</span>/10</div>
+    <button class="back-btn" id="m4BackBtn" style="border-color:#f97316;color:#f97316;">← Home</button>
+  </div>
+  <div id="m4Body">
+    <div id="m4MolPool">
+      <h3>MOLECULES — drag to pathway</h3>
+      <div id="m4MolList"></div>
+    </div>
+    <div id="m4Pathway">
+      <h3>GLYCOLYSIS PATHWAY (10 Steps)</h3>
+      <div class="pathway-steps" id="m4Steps"></div>
+      <button id="m4CheckBtn">✓ CHECK MY ANSWERS</button>
+    </div>
+  </div>
+  <div id="m4Complete">
+    <h2>GLYCOLYSIS COMPLETE! ⚡</h2>
+    <div class="final-score" id="m4FinalScore">—</div>
+    <p id="m4FinalMsg">—</p>
+    <button class="m3-action-btn" id="m4PlayAgain" style="border-color:#f97316;color:#fdba74;background:rgba(249,115,22,0.1);">▶ Try Again</button>
+    <button class="m3-action-btn" id="m4GoHome" style="margin-top:8px;border-color:#f97316;color:#fdba74;background:rgba(249,115,22,0.1);">← Home</button>
+  </div>
+</div>
+
+<!-- SCIENCE POPUP -->
+<div id="sciPopup">
+  <div class="sp-icon" id="spIcon">🔬</div>
+  <div class="sp-title" id="spTitle">—</div>
+  <div class="sp-body" id="spBody">—</div>
+  <div class="sp-src" id="spSrc"></div>
+  <button onclick="closeSciPopup()">GOT IT</button>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module" src="main.js"></script>
+<script>
+// ============================================================
+// SHARED DATA
+// ============================================================
+const AA_DATA={
+  Gly:{name:'Glycine',    letter:'G',prop:'nonpolar',essential:false,fact:'Simplest AA — H side chain. Only AA small enough for collagen interior.',food:'Meat, fish, dairy, legumes',bio:'Neurotransmitter. Critical for collagen synthesis.'},
+  Ala:{name:'Alanine',    letter:'A',prop:'nonpolar',essential:false,fact:'Most abundant AA in proteins. Methyl side chain, stable in α-helices.',food:'Meat, poultry, fish, eggs',bio:'Key in glucose-alanine cycle linking muscle and liver.'},
+  Val:{name:'Valine',     letter:'V',prop:'nonpolar',essential:true, fact:'Val6→Glu mutation causes sickle cell anemia. Branched, strongly hydrophobic.',food:'Meat, dairy, soy, mushrooms',bio:'Sickle cell disease caused by Val→Glu at β-chain position 6.'},
+  Leu:{name:'Leucine',    letter:'L',prop:'nonpolar',essential:true, fact:'Most common AA in proteins. Essential — must come from diet.',food:'Meat, nuts, seeds, dairy',bio:'Activates mTOR pathway for muscle protein synthesis.'},
+  Ile:{name:'Isoleucine', letter:'I',prop:'nonpolar',essential:true, fact:'Isomer of Leucine. In hydrophobic protein cores.',food:'Meat, fish, eggs, seeds',bio:'Branched-chain AA. Critical for hemoglobin and immune function.'},
+  Phe:{name:'Phenylalanine',letter:'F',prop:'nonpolar',essential:true,fact:'Contains a benzene ring. PKU disease from inability to metabolize Phe.',food:'Meat, eggs, dairy, soybeans',bio:'Precursor to tyrosine, dopamine, adrenaline.'},
+  Trp:{name:'Tryptophan', letter:'W',prop:'nonpolar',essential:true, fact:'Largest AA. Single codon (UGG). Precursor to serotonin and melatonin.',food:'Turkey, eggs, cheese, nuts',bio:'Precursor to serotonin, melatonin, and niacin.'},
+  Met:{name:'Methionine', letter:'M',prop:'nonpolar',essential:true, fact:'START codon AA — every protein begins with Met.',food:'Meat, fish, eggs, Brazil nuts',bio:'Start codon AA. Provides sulfur for methylation reactions.'},
+  Pro:{name:'Proline',    letter:'P',prop:'nonpolar',essential:false,fact:'Rigid ring creates kinks in helices. Cannot form standard H-bonds.',food:'Meat, dairy, wheat, legumes',bio:'Unique ring creates helix kinks. Essential for collagen.'},
+  Ser:{name:'Serine',     letter:'S',prop:'polar',  essential:false,fact:'Major phosphorylation site — cell signaling switches on/off.',food:'Meat, dairy, wheat, peanuts',bio:'Phosphorylated by kinases in signaling. In serine protease active sites.'},
+  Thr:{name:'Threonine',  letter:'T',prop:'polar',  essential:true, fact:'Also phosphorylated in signaling. In active sites of serine proteases.',food:'Meat, dairy, lentils, sesame',bio:'Essential AA. Phosphorylation site. Important for mucin production.'},
+  Cys:{name:'Cysteine',   letter:'C',prop:'polar',  essential:false,fact:'Forms disulfide bonds (S-S) that lock protein structure.',food:'Chicken, eggs, oats, dairy',bio:'Disulfide bonds in antibodies and insulin. Precursor to glutathione.'},
+  Tyr:{name:'Tyrosine',   letter:'Y',prop:'polar',  essential:false,fact:'Phosphorylation target of tyrosine kinases. Precursor to dopamine.',food:'Chicken, turkey, dairy, oats',bio:'Precursor to dopamine, adrenaline, thyroid hormones.'},
+  Asn:{name:'Asparagine', letter:'N',prop:'polar',  essential:false,fact:'Glycosylation site — sugars attach here. First isolated from asparagus.',food:'Asparagus, dairy, poultry, eggs',bio:'N-linked glycosylation site. Regulates protein folding.'},
+  Gln:{name:'Glutamine',  letter:'Q',prop:'polar',  essential:false,fact:'Most abundant free AA in blood. Fuel for rapidly dividing cells.',food:'Beef, chicken, fish, dairy',bio:'Most abundant plasma AA. Fuel for intestinal and immune cells.'},
+  Asp:{name:'Aspartate',  letter:'D',prop:'acidic', essential:false,fact:'Negatively charged at pH 7. In active sites of many enzymes.',food:'Meat, oysters, avocado, asparagus',bio:'Key in urea cycle, TCA cycle. Neurotransmitter precursor.'},
+  Glu:{name:'Glutamate',  letter:'E',prop:'acidic', essential:false,fact:'Major excitatory neurotransmitter. Sickle cell anemia mutation site.',food:'Meat, cheese, tomatoes, soy',bio:'Main excitatory neurotransmitter. Central to nitrogen metabolism.'},
+  Lys:{name:'Lysine',     letter:'K',prop:'basic',  essential:true, fact:'Positively charged. Histones are rich in Lys — binds DNA.',food:'Meat, legumes, dairy, quinoa',bio:'Histones rich in Lys bind DNA. Acetylation regulates gene expression.'},
+  Arg:{name:'Arginine',   letter:'R',prop:'basic',  essential:false,fact:'Most positively charged AA. DNA binding, enzyme active sites.',food:'Meat, nuts, seeds, dairy',bio:'Precursor to nitric oxide (vasodilator). Urea cycle.'},
+  His:{name:'Histidine',  letter:'H',prop:'basic',  essential:true, fact:'Near-neutral pKa lets it switch charge at physiological pH.',food:'Meat, fish, eggs, dairy',bio:'Proton shuttling in enzyme catalysis. In hemoglobin O₂ binding.'},
+};
+const PROP_COLORS={nonpolar:'#fbbf24',polar:'#60a5fa',acidic:'#ef4444',basic:'#34d399'};
+const PROP_NODE={nonpolar:{bg:'#92400e',border:'#fbbf24'},polar:{bg:'#1e3a5f',border:'#60a5fa'},acidic:{bg:'#7f1d1d',border:'#ef4444'},basic:{bg:'#064e3b',border:'#34d399'}};
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showScreen(id){
+  ['homeScreen','module1Screen','module2Screen','module3Screen','module4Screen'].forEach(s=>{
+    const el=document.getElementById(s); if(el) el.style.display='none';
+  });
+  const t=document.getElementById(id); if(t) t.style.display='flex';
+}
+document.getElementById('goM1').addEventListener('click',()=>{showScreen('module1Screen');document.getElementById('m1Home').style.display='flex';document.getElementById('m1Game').style.display='none';});
+document.getElementById('goM2').addEventListener('click',()=>showScreen('module2Screen'));
+document.getElementById('goM3').addEventListener('click',()=>{showScreen('module3Screen');startM3();});
+document.getElementById('goM4').addEventListener('click',()=>{showScreen('module4Screen');initGlycolysis();});
+document.getElementById('m1HomeBack').addEventListener('click',()=>showScreen('homeScreen'));
+document.getElementById('buildBackBtn').addEventListener('click',()=>showScreen('homeScreen'));
+document.getElementById('m3BackBtn').addEventListener('click',()=>{stopM3Timer();showScreen('homeScreen');});
+document.getElementById('m4BackBtn').addEventListener('click',()=>showScreen('homeScreen'));
+document.getElementById('m1GameBack').addEventListener('click',()=>{document.getElementById('m1Game').style.display='none';document.getElementById('m1Home').style.display='flex';window._resetScene&&window._resetScene();});
+document.querySelectorAll('.protein-card').forEach(card=>{card.addEventListener('click',()=>{document.getElementById('m1Home').style.display='none';document.getElementById('m1Game').style.display='block';window._loadLevel&&window._loadLevel(card.dataset.level);});});
+
+// ============================================================
+// MODULE 1 HELPERS
+// ============================================================
+const PROTEIN_CONTEXT={
+  antibody:{title:'IMMUNOGLOBULIN G — Immune Defense',what:'Y-shape: 2 heavy + 2 light chains joined by disulfide bonds. Fab arms have 6 CDR loops recognizing antigens. Fc stem recruits immune cells.',why:'🛡️ Basis of vaccines and 100+ cancer drugs. Disulfide bonds hold the Y-shape — break them and antigen binding fails.',facts:['1,320 AA','4 chains (2H+2L)','150 kDa','12 disulfide bonds','10B+ specificities','100+ approved drugs'],location:'Blood plasma, lymph nodes, spleen. Crosses the placenta to protect fetuses. Secreted by plasma B cells.',levels:[{label:'1° Sequence',color:'#60a5fa'},{label:'2° β-Sheet domains',color:'#ef4444'},{label:'3° Immunoglobulin fold',color:'#fbbf24'},{label:'4° Y-shaped tetramer',color:'#a78bfa'}]},
+  insulin:{title:'INSULIN — Blood Glucose Regulation',what:'51 AA hormone, two chains (A+B) linked by 2 interchain + 1 intrachain disulfide bonds. Binds insulin receptor → cells absorb glucose.',why:'⚡ 537M diabetics worldwide. First protein sequenced (1955, Nobel). First bioengineered drug (1982). Insulin lispro engineered by swapping 2 AAs.',facts:['51 AA','2 chains (A+B)','5.8 kDa','3 disulfide bonds','First sequenced 1955','537M diabetics'],location:'Produced in pancreatic beta cells. Secreted into blood to reach every cell. Stored as zinc hexamers in the pancreas.',levels:[{label:'1° Sequence',color:'#60a5fa'},{label:'2° α-Helix (B-chain)',color:'#ef4444'},{label:'3° Disulfide-locked fold',color:'#fbbf24'}]},
+  collagen:{title:'COLLAGEN — Structural Scaffold',what:'Triple helix of 3 α-chains. Every 3rd AA must be Glycine (interior — zero space for side chains). Hydroxyproline stabilizes H-bonds. Requires Vitamin C.',why:'🧱 30% of total body protein. Scurvy = collagen failing without Vitamin C. 1,000+ mutations cause brittle bones, loose skin, vessel rupture.',facts:['~1,400 AA/chain','Triple helix','~300 kDa','Gly-X-Y repeat','30% of body protein','Requires Vitamin C'],location:'Skin (70% of dry weight), bone, tendons, cartilage, blood vessel walls, cornea, gut lining.',levels:[{label:'1° Gly-X-Y repeat',color:'#60a5fa'},{label:'2° Polyproline II helix',color:'#ef4444'},{label:'3°/4° Triple helix',color:'#a78bfa'}]},
+  prion:{title:'PRION PROTEIN — Conformational Disease',what:'Same sequence, two folds: PrPC (α-helical, soluble) vs PrPSc (β-sheet stacks, insoluble). PrPSc converts PrPC by contact — no DNA required.',why:'☠️ 1997 Nobel Prize (Prusiner). 100% fatal. Template for understanding Alzheimer\'s (amyloid-β) and Parkinson\'s.',facts:['253 AA','1 chain','~35 kDa','Same sequence — 2 folds','100% fatal','1997 Nobel Prize'],location:'Expressed in neurons throughout the brain and nervous system. Normal PrPC on neuronal surfaces. PrPSc aggregates destroy brain tissue.',levels:[{label:'1° Identical sequence',color:'#60a5fa'},{label:'2° α→β conversion',color:'#ef4444'},{label:'3° Amyloid aggregation',color:'#fbbf24'}]},
+};
+let infoExpanded=false;
+window.toggleInfoBar=function(){infoExpanded=!infoExpanded;document.getElementById('infoBarBody').style.display=infoExpanded?'block':'none';document.getElementById('infoBarToggle').textContent=infoExpanded?'▼ collapse':'▲ expand';};
+window.updateProteinContext=function(key){
+  const ctx=PROTEIN_CONTEXT[key]; if(!ctx) return;
+  document.getElementById('infoBarTitle').textContent=ctx.title;
+  document.getElementById('infoBarWhat').textContent=ctx.what;
+  document.getElementById('infoBarWhy').textContent=ctx.why;
+  document.getElementById('infoBarFacts').innerHTML=ctx.facts.map(f=>`<span class="ib-fact-chip">${f}</span>`).join('');
+  document.getElementById('bodyLocationText').textContent=ctx.location;
+  document.getElementById('structLevels').innerHTML=ctx.levels.map(l=>`<div class="slevel-badge" style="color:${l.color};border-color:${l.color};background:${l.color}18">${l.label}</div>`).join('');
+  infoExpanded=true;document.getElementById('infoBarBody').style.display='block';document.getElementById('infoBarToggle').textContent='▼ collapse';
+};
+document.querySelectorAll('.aa-chip').forEach(chip=>{
+  chip.addEventListener('click',()=>{
+    const aa=AA_DATA[chip.dataset.aa]; if(!aa) return;
+    document.getElementById('aaDetail').style.display='block';
+    document.getElementById('adName').textContent=aa.name+' ('+chip.dataset.aa+')';
+    document.getElementById('adCode').textContent='1-letter: '+aa.letter+' · '+aa.prop+(aa.essential?' · Essential':'');
+    document.getElementById('adFact').textContent=aa.fact;
+  });
+});
+document.getElementById('tempSlider').addEventListener('input',function(){const t=+this.value;document.getElementById('tempVal').textContent=t+'°C';document.getElementById('tempEffect').textContent=t<42?'Normal range.':t<65?'⚠️ Proteins stressing.':t<80?'⛔ Denaturing!':'☠️ Complete denaturation.';window._applyParams&&window._applyParams(t,+document.getElementById('pHSlider').value,+document.getElementById('saltSlider').value);});
+document.getElementById('pHSlider').addEventListener('input',function(){const pH=+this.value;document.getElementById('pHVal').textContent=pH.toFixed(1);document.getElementById('pHEffect').textContent=pH<5?'Acidic. Structure stressed.':pH<8?'Physiological.':'Basic. Ionic interactions disrupted.';window._applyParams&&window._applyParams(+document.getElementById('tempSlider').value,pH,+document.getElementById('saltSlider').value);});
+document.getElementById('saltSlider').addEventListener('input',function(){const s=+this.value;document.getElementById('saltVal').textContent=s+'mM';document.getElementById('saltEffect').textContent=s<50?'Hypotonic.':s<250?'Physiological.':'⚠️ High salt.';window._applyParams&&window._applyParams(+document.getElementById('tempSlider').value,+document.getElementById('pHSlider').value,s);});
+document.getElementById('mutationBtn').addEventListener('click',function(){window._applyMutation&&window._applyMutation(this);});
+
+// ============================================================
+// MODULE 2: BUILD LAB
+// ============================================================
+const dropZone=document.getElementById('buildDropZone'),chainSvg=document.getElementById('chainSvg');
+let chain=[];
+document.querySelectorAll('.draggable-aa').forEach(el=>{el.addEventListener('dragstart',e=>{window._dragData={aa:el.dataset.aa,prop:el.dataset.prop,charge:+el.dataset.charge,hydro:+el.dataset.hydro};e.dataTransfer.effectAllowed='copy';});});
+dropZone.addEventListener('dragover',e=>{e.preventDefault();});
+dropZone.addEventListener('drop',e=>{e.preventDefault();if(!window._dragData)return;const r=dropZone.getBoundingClientRect();addNode(window._dragData,e.clientX-r.left,e.clientY-r.top);window._dragData=null;});
+
+function addNode(d,x,y){document.getElementById('buildInstructions').style.display='none';chain.push({...d,x,y});renderNode(chain.length-1);drawChain();updateBuildAnalysis();}
+function renderNode(idx){
+  const n=chain[idx],c=PROP_NODE[n.prop]||{bg:'#1e293b',border:'#475569'};
+  const el=document.createElement('div');el.className='aa-node';el.id='node-'+idx;el.textContent=n.aa;
+  el.style.left=(n.x-25)+'px';el.style.top=(n.y-25)+'px';el.style.background=c.bg;el.style.borderColor=c.border;
+  let isDragging=false,ox=0,oy=0;
+  el.addEventListener('mousedown',e=>{if(e.button===2)return;isDragging=true;const r=dropZone.getBoundingClientRect();ox=e.clientX-r.left-n.x;oy=e.clientY-r.top-n.y;e.preventDefault();});
+  window.addEventListener('mousemove',e=>{if(!isDragging)return;const r=dropZone.getBoundingClientRect();n.x=e.clientX-r.left-ox;n.y=e.clientY-r.top-oy;el.style.left=(n.x-25)+'px';el.style.top=(n.y-25)+'px';drawChain();});
+  window.addEventListener('mouseup',()=>{isDragging=false;});
+  el.addEventListener('contextmenu',e=>{e.preventDefault();chain.splice(idx,1);dropZone.removeChild(el);reRenderAll();});
+  dropZone.appendChild(el);
+}
+function reRenderAll(){dropZone.querySelectorAll('.aa-node').forEach(n=>n.remove());chain.forEach((_,i)=>renderNode(i));drawChain();updateBuildAnalysis();if(!chain.length)document.getElementById('buildInstructions').style.display='block';}
+function drawChain(){chainSvg.innerHTML='';for(let i=1;i<chain.length;i++){const a=chain[i-1],b=chain[i],line=document.createElementNS('http://www.w3.org/2000/svg','line');line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);line.setAttribute('stroke','#334155');line.setAttribute('stroke-width','2');line.setAttribute('stroke-dasharray','4 3');chainSvg.appendChild(line);if(a.aa==='Cys'&&b.aa==='Cys'){const mx=(a.x+b.x)/2,my=(a.y+b.y)/2,c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',mx);c.setAttribute('cy',my);c.setAttribute('r','5');c.setAttribute('fill','#fde68a');chainSvg.appendChild(c);}}}
+function updateBuildAnalysis(){
+  if(!chain.length){['chargeValue','hydroValue','solValue','compositionDesc','structurePredict'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';});document.getElementById('chargeDesc').textContent='Add amino acids to begin.';document.getElementById('chainList').innerHTML='';document.getElementById('structureSuggestion').style.display='none';return;}
+  const netCharge=chain.reduce((s,n)=>s+n.charge,0),avgHydro=chain.reduce((s,n)=>s+n.hydro,0)/chain.length;
+  const counts={nonpolar:0,polar:0,acidic:0,basic:0};chain.forEach(n=>counts[n.prop]=(counts[n.prop]||0)+1);
+  const npFrac=counts.nonpolar/chain.length;
+  const chargeEl=document.getElementById('chargeValue');chargeEl.textContent=(netCharge>0?'+':'')+netCharge.toFixed(1);chargeEl.style.color=netCharge>0?'#34d399':netCharge<0?'#ef4444':'#94a3b8';
+  const ca=Math.min(50,Math.abs(netCharge)*7),cf=document.getElementById('chargeFill');cf.style.width=ca+'%';cf.style.marginLeft=netCharge>=0?'50%':(50-ca)+'%';cf.style.background=netCharge>0?'#34d399':netCharge<0?'#ef4444':'#94a3b8';
+  document.getElementById('chargeDesc').textContent=netCharge>2?'Highly positive — binds DNA/membranes (e.g. histones)':netCharge>0?'Slightly positive':netCharge<-2?'Highly negative — very water-soluble':netCharge<0?'Slightly negative':'Neutral — typical globular protein.';
+  const hydroEl=document.getElementById('hydroValue');hydroEl.textContent=avgHydro.toFixed(2);hydroEl.style.color=avgHydro>1?'#fbbf24':avgHydro<-1?'#60a5fa':'#94a3b8';
+  const hp=Math.min(100,Math.max(0,(avgHydro+4.5)/9*100)),hf=document.getElementById('hydroFill');hf.style.width=hp+'%';hf.style.background=avgHydro>1?'#fbbf24':avgHydro<-1?'#60a5fa':'#a78bfa';
+  document.getElementById('hydroDesc').textContent=avgHydro>2?'Very hydrophobic — membrane domain or buried core.':avgHydro>0?'Moderately hydrophobic — folds inward.':avgHydro<-2?'Very hydrophilic — water-soluble, surface-exposed.':'Mixed — typical surface loop.';
+  const solEl=document.getElementById('solValue'),solDesc=document.getElementById('solDesc');
+  if(npFrac>0.65){solEl.textContent='⚠️ Low';solEl.style.color='#ef4444';solDesc.textContent='Very hydrophobic — likely insoluble or membrane-associated.';}
+  else if(npFrac>0.45){solEl.textContent='Moderate';solEl.style.color='#fbbf24';solDesc.textContent='Balanced — soluble with hydrophobic core tendency.';}
+  else{solEl.textContent='✓ High';solEl.style.color='#4ade80';solDesc.textContent='Mostly polar/charged — very water-soluble.';}
+  document.getElementById('compositionDesc').textContent=`${chain.length} AA: ${counts.nonpolar||0} nonpolar · ${counts.polar||0} polar · ${counts.acidic||0} acidic · ${counts.basic||0} basic`;
+  document.getElementById('chainList').innerHTML=chain.map(n=>`<span class="chain-chip" style="background:${PROP_NODE[n.prop].bg};border-color:${PROP_NODE[n.prop].border};border:1px solid" title="${AA_DATA[n.aa]?.name||n.aa}">${n.aa}</span>`).join('');
+  let sp='',sd='',sg='',si='';
+  if(chain.length<4){sp='Too short';sd='Add ≥ 4 amino acids.';}
+  else if(npFrac>0.6){sp='α-Helix Core';sd='High nonpolar content → hydrophobic core likely forms.';sg='Real example: hemoglobin\'s globin fold is mostly hydrophobic helices packed around the heme group.';si='🩸';}
+  else if(npFrac>=0.35&&(counts.acidic+counts.basic)/chain.length>0.2){sp='Globular';sd='Mix of hydrophobic core + charged surface — classic globular protein.';sg='Real example: insulin has a hydrophobic core (Val, Leu) and charged surface (Glu, Lys) for blood solubility.';si='⚡';}
+  else if((counts.acidic+counts.basic)/chain.length>0.5){sp='Highly Charged';sd='Many charged residues → very water-soluble.';sg='Real example: histones are rich in Lys/Arg — their positive charge binds negatively charged DNA.';si='🧬';}
+  else if(chain.filter(n=>n.aa==='Pro').length>=2){sp='Kinked/Rigid';sd='Multiple Prolines break helix patterns and create rigid bends.';sg='Real example: collagen is Gly-Pro-Hyp repeats — proline gives the triple helix its stiffness.';si='🧱';}
+  else if(chain.filter(n=>n.aa==='Cys').length>=2){sp='Disulfide-Locked';sd='Multiple Cysteines can form S-S bonds, locking the structure.';sg='Real example: insulin has 3 disulfide bonds essential for its shape and receptor binding.';si='⚡';}
+  else{sp='Mixed/Loop';sd='Balanced — likely forms loops and coils. Add more nonpolar AAs for helix/sheet.';}
+  document.getElementById('structurePredict').textContent=sp;document.getElementById('structureDesc').textContent=sd;
+  const sug=document.getElementById('structureSuggestion');if(sg){sug.style.display='block';sug.innerHTML=`<strong>${si} REAL WORLD CONNECTION</strong>${sg}`;}else sug.style.display='none';
+}
+document.getElementById('analyzeBtn').addEventListener('click',()=>{
+  if(!chain.length){alert('Add some amino acids first!');return;}
+  const nc=chain.reduce((s,n)=>s+n.charge,0),ah=chain.reduce((s,n)=>s+n.hydro,0)/chain.length,sp=document.getElementById('structurePredict').textContent;
+  window.showSciPopup('🔬','YOUR PROTEIN — FULL ANALYSIS',`Chain (${chain.length} AA): ${chain.map(n=>n.aa).join(' → ')}\n\nNet Charge: ${nc>0?'+':''}${nc.toFixed(1)}\nHydrophobicity: ${ah.toFixed(2)} (Kyte-Doolittle)\nPredicted Structure: ${sp}`,'Kyte-Doolittle hydrophobicity scale, J Mol Biol (1982)');
+});
+document.getElementById('clearBtn').addEventListener('click',()=>{chain=[];dropZone.querySelectorAll('.aa-node').forEach(n=>n.remove());chainSvg.innerHTML='';document.getElementById('buildInstructions').style.display='block';updateBuildAnalysis();});
+
+// ============================================================
+// MODULE 3: MATCHING — SVG side-chain structures + filter toggles
+// ============================================================
+
+// Detailed SVG side-chain diagrams per amino acid
+function buildSideChainSVG(aa){
+  const d=AA_DATA[aa],col=PROP_COLORS[d.prop]||'#94a3b8';
+  const bg=col+'18',stroke=col;
+  // Each AA gets a unique SVG representing its side-chain structure
+  const diagrams={
+    Gly:`<circle cx="45" cy="45" r="8" fill="${bg}" stroke="${stroke}" stroke-width="2"/><text x="45" y="50" text-anchor="middle" fill="${stroke}" font-size="10" font-family="monospace">H</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Gly</text>`,
+    Ala:`<line x1="45" y1="55" x2="45" y2="35" stroke="${stroke}" stroke-width="2"/><circle cx="45" cy="30" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="34" text-anchor="middle" fill="${stroke}" font-size="9">CH₃</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Ala</text>`,
+    Val:`<line x1="45" y1="55" x2="45" y2="38" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="38" x2="30" y2="25" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="38" x2="60" y2="25" stroke="${stroke}" stroke-width="2"/><circle cx="25" cy="22" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="62" cy="22" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="25" y="26" text-anchor="middle" fill="${stroke}" font-size="8">Me</text><text x="62" y="26" text-anchor="middle" fill="${stroke}" font-size="8">Me</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Val</text>`,
+    Leu:`<line x1="45" y1="55" x2="45" y2="44" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="44" x2="35" y2="34" stroke="${stroke}" stroke-width="2"/><line x1="35" y1="34" x2="25" y2="24" stroke="${stroke}" stroke-width="2"/><line x1="35" y1="34" x2="45" y2="22" stroke="${stroke}" stroke-width="2"/><circle cx="20" cy="21" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="47" cy="18" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="20" y="25" text-anchor="middle" fill="${stroke}" font-size="7">Me</text><text x="47" y="22" text-anchor="middle" fill="${stroke}" font-size="7">Me</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Leu</text>`,
+    Ile:`<line x1="45" y1="55" x2="45" y2="40" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="30" y2="28" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="58" y2="28" stroke="${stroke}" stroke-width="2"/><line x1="30" y1="28" x2="22" y2="18" stroke="${stroke}" stroke-width="2"/><circle cx="18" cy="15" r="6" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="60" cy="25" r="6" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Ile</text>`,
+    Phe:`<line x1="45" y1="55" x2="45" y2="42" stroke="${stroke}" stroke-width="2"/><polygon points="45,42 55,36 55,24 45,18 35,24 35,36" fill="${bg}" stroke="${stroke}" stroke-width="2"/><text x="45" y="34" text-anchor="middle" fill="${stroke}" font-size="9">⬡</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Phe</text>`,
+    Trp:`<line x1="45" y1="55" x2="45" y2="44" stroke="${stroke}" stroke-width="2"/><polygon points="45,44 55,38 58,26 50,18 38,20 34,32" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><polygon points="34,32 38,20 30,14 22,20 24,32" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="44" cy="30" r="3" fill="${stroke}"/><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Trp</text>`,
+    Met:`<line x1="45" y1="55" x2="45" y2="44" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="44" x2="38" y2="34" stroke="${stroke}" stroke-width="2"/><circle cx="36" cy="30" r="5" fill="#fde68a" stroke="#ca8a04" stroke-width="1.5"/><text x="36" y="34" text-anchor="middle" fill="#78350f" font-size="8">S</text><line x1="36" y1="25" x2="36" y2="18" stroke="${stroke}" stroke-width="2"/><circle cx="36" cy="14" r="6" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="36" y="18" text-anchor="middle" fill="${stroke}" font-size="8">Me</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Met</text>`,
+    Pro:`<line x1="45" y1="55" x2="45" y2="44" stroke="${stroke}" stroke-width="2"/><ellipse cx="45" cy="35" rx="14" ry="10" fill="${bg}" stroke="${stroke}" stroke-width="2"/><text x="45" y="39" text-anchor="middle" fill="${stroke}" font-size="9">ring</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Pro</text>`,
+    Ser:`<line x1="45" y1="55" x2="45" y2="40" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="45" y2="28" stroke="${stroke}" stroke-width="2"/><circle cx="45" cy="22" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="26" text-anchor="middle" fill="${stroke}" font-size="8">OH</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Ser</text>`,
+    Thr:`<line x1="45" y1="55" x2="45" y2="40" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="34" y2="28" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="56" y2="28" stroke="${stroke}" stroke-width="2"/><circle cx="30" cy="24" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="58" cy="24" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="30" y="28" text-anchor="middle" fill="${stroke}" font-size="8">OH</text><text x="58" y="28" text-anchor="middle" fill="${stroke}" font-size="8">Me</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Thr</text>`,
+    Cys:`<line x1="45" y1="55" x2="45" y2="40" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="45" y2="28" stroke="${stroke}" stroke-width="2"/><circle cx="45" cy="22" r="7" fill="#fde68a" stroke="#ca8a04" stroke-width="1.5"/><text x="45" y="26" text-anchor="middle" fill="#78350f" font-size="8">SH</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Cys</text>`,
+    Tyr:`<line x1="45" y1="55" x2="45" y2="44" stroke="${stroke}" stroke-width="2"/><polygon points="45,44 55,38 55,26 45,20 35,26 35,38" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="45" cy="14" r="6" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="18" text-anchor="middle" fill="${stroke}" font-size="8">OH</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Tyr</text>`,
+    Asn:`<line x1="45" y1="55" x2="45" y2="40" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="45" y2="28" stroke="${stroke}" stroke-width="2"/><rect x="33" y="18" width="24" height="14" rx="3" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="29" text-anchor="middle" fill="${stroke}" font-size="8">C=O</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Asn</text>`,
+    Gln:`<line x1="45" y1="55" x2="45" y2="42" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="42" x2="45" y2="30" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="30" x2="45" y2="22" stroke="${stroke}" stroke-width="2"/><rect x="33" y="12" width="24" height="14" rx="3" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="23" text-anchor="middle" fill="${stroke}" font-size="8">CONH₂</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Gln</text>`,
+    Asp:`<line x1="45" y1="55" x2="45" y2="40" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="45" y2="28" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="28" x2="35" y2="20" stroke="${stroke}" stroke-width="1.5"/><line x1="45" y1="28" x2="55" y2="20" stroke="${stroke}" stroke-width="1.5"/><circle cx="30" cy="17" r="6" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="60" cy="17" r="6" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="30" y="21" text-anchor="middle" fill="${stroke}" font-size="8">O⁻</text><text x="60" y="21" text-anchor="middle" fill="${stroke}" font-size="8">O</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Asp</text>`,
+    Glu:`<line x1="45" y1="55" x2="45" y2="43" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="43" x2="45" y2="33" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="33" x2="45" y2="23" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="23" x2="35" y2="16" stroke="${stroke}" stroke-width="1.5"/><line x1="45" y1="23" x2="55" y2="16" stroke="${stroke}" stroke-width="1.5"/><circle cx="30" cy="13" r="6" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="60" cy="13" r="6" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="30" y="17" text-anchor="middle" fill="${stroke}" font-size="7">O⁻</text><text x="60" y="17" text-anchor="middle" fill="${stroke}" font-size="7">O</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Glu</text>`,
+    Lys:`<line x1="45" y1="55" x2="45" y2="15" stroke="${stroke}" stroke-width="2"/><circle cx="45" cy="10" r="7" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="14" text-anchor="middle" fill="${stroke}" font-size="8">NH₃⁺</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Lys</text>`,
+    Arg:`<line x1="45" y1="55" x2="45" y2="40" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="40" x2="45" y2="30" stroke="${stroke}" stroke-width="2"/><line x1="45" y1="30" x2="32" y2="20" stroke="${stroke}" stroke-width="1.5"/><line x1="45" y1="30" x2="58" y2="20" stroke="${stroke}" stroke-width="1.5"/><line x1="32" y1="20" x2="32" y2="13" stroke="${stroke}" stroke-width="1.5"/><line x1="58" y1="20" x2="58" y2="13" stroke="${stroke}" stroke-width="1.5"/><line x1="32" y1="13" x2="45" y2="10" stroke="${stroke}" stroke-width="1.5"/><line x1="58" y1="13" x2="45" y2="10" stroke="${stroke}" stroke-width="1.5"/><circle cx="45" cy="7" r="5" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="11" text-anchor="middle" fill="${stroke}" font-size="7">+</text><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">Arg</text>`,
+    His:`<line x1="45" y1="55" x2="45" y2="43" stroke="${stroke}" stroke-width="2"/><polygon points="45,43 57,36 53,23 37,23 33,36" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><circle cx="37" cy="23" r="4" fill="${stroke}"/><circle cx="53" cy="23" r="4" fill="${bg}" stroke="${stroke}" stroke-width="1.5"/><text x="45" y="75" text-anchor="middle" fill="${col}" font-size="9" font-family="monospace">His</text>`,
+  };
+  return `<svg width="90" height="80" viewBox="0 0 90 80">${diagrams[aa]||`<text x="45" y="40" text-anchor="middle" fill="${col}" font-size="12">${aa}</text>`}</svg>`;
+}
+
+const DIFF_SETS={easy:['Gly','Ala','Val','Leu','Ser','Asp','Glu','Lys'],medium:['Gly','Ala','Val','Phe','Trp','Cys','Tyr','Asp','Glu','Lys','Arg','His'],hard:Object.keys(AA_DATA)};
+let m3State={diff:'easy',score:0,pairs:[],matched:0,wrongs:0,timer:null,elapsed:0,filter:'all'};
+let m3SelStruct=null,m3SelName=null;
+
+function startM3(){
+  const diff=m3State.diff,filter=m3State.filter;
+  let pool=DIFF_SETS[diff];
+  if(filter!=='all') pool=pool.filter(aa=>AA_DATA[aa].prop===filter);
+  if(pool.length<3) pool=DIFF_SETS[diff]; // fallback if filter too narrow
+  const keys=[...pool].sort(()=>Math.random()-0.5).slice(0,diff==='easy'?6:diff==='medium'?8:10);
+  m3State={...m3State,score:0,pairs:keys,matched:0,wrongs:0,elapsed:0};
+  m3SelStruct=null;m3SelName=null;
+  document.getElementById('m3ScoreVal').textContent='0';
+  document.getElementById('m3InfoPanel').style.display='none';
+  document.getElementById('m3Complete').style.display='none';
+  document.getElementById('m3Hint').style.display='none';
+  renderM3();startM3Timer();
+}
+
+function renderM3(){
+  const pairs=m3State.pairs;
+  const structOrder=[...pairs].sort(()=>Math.random()-0.5);
+  const nameOrder=[...pairs].sort(()=>Math.random()-0.5);
+  const sl=document.getElementById('m3StructList'),nl=document.getElementById('m3NameList');
+  sl.innerHTML='';nl.innerHTML='';
+  structOrder.forEach(aa=>{
+    const d=AA_DATA[aa],col=PROP_COLORS[d.prop];
+    const el=document.createElement('div');el.className='match-struct';el.dataset.aa=aa;el.id='struct-'+aa;
+    el.innerHTML=`<div class="struct-svg-wrap">${buildSideChainSVG(aa)}</div><div class="struct-info"><div class="struct-prop-tag" style="color:${col}">${d.prop.toUpperCase()}</div><div class="struct-charge" style="color:${col}">${d.prop==='acidic'?'Charge: −':d.prop==='basic'?'Charge: +':'Charge: 0'}</div><div style="font-size:9px;color:#475569;margin-top:4px">${d.essential?'Essential':'Non-essential'}</div></div>`;
+    el.addEventListener('click',()=>selectStruct(aa));
+    sl.appendChild(el);
+  });
+  nameOrder.forEach(aa=>{
+    const d=AA_DATA[aa],col=PROP_COLORS[d.prop];
+    const el=document.createElement('div');el.className='match-name';el.dataset.aa=aa;el.id='name-'+aa;
+    el.innerHTML=`<div class="mn-name">${d.name}</div><div class="mn-sub">${aa} · ${d.letter} · <span style="color:${col}">${d.prop}</span></div>`;
+    el.addEventListener('click',()=>selectName(aa));
+    nl.appendChild(el);
+  });
+}
+
+function selectStruct(aa){if(document.getElementById('struct-'+aa)?.classList.contains('correct'))return;m3SelStruct=aa;document.querySelectorAll('.match-struct:not(.correct)').forEach(e=>e.classList.remove('selected'));document.getElementById('struct-'+aa)?.classList.add('selected');tryMatch();}
+function selectName(aa){if(document.getElementById('name-'+aa)?.classList.contains('correct'))return;m3SelName=aa;document.querySelectorAll('.match-name:not(.correct)').forEach(e=>e.classList.remove('selected'));document.getElementById('name-'+aa)?.classList.add('selected');tryMatch();}
+
+function tryMatch(){
+  if(!m3SelStruct||!m3SelName) return;
+  const s=m3SelStruct,n=m3SelName;m3SelStruct=null;m3SelName=null;
+  if(s===n){
+    document.getElementById('struct-'+s)?.classList.replace('selected','correct');
+    document.getElementById('name-'+n)?.classList.replace('selected','correct');
+    m3State.score+=10+(m3State.diff==='hard'?5:m3State.diff==='medium'?3:0);
+    document.getElementById('m3ScoreVal').textContent=m3State.score;
+    m3State.matched++;showM3Info(s);
+  } else {
+    ['struct-'+s,'name-'+n].forEach(id=>{const e=document.getElementById(id);if(e){e.classList.add('wrong');setTimeout(()=>e.classList.remove('wrong','selected'),800);}});
+    m3State.wrongs++;
+    if(m3State.wrongs%2===0){const h=document.getElementById('m3Hint');h.style.display='block';h.textContent='💡 Hint for '+AA_DATA[s].name+': '+AA_DATA[s].fact;setTimeout(()=>h.style.display='none',5000);}
+  }
+}
+
+function showM3Info(aa){
+  const d=AA_DATA[aa],col=PROP_COLORS[d.prop];
+  document.getElementById('m3InfoPanel').style.display='block';
+  document.getElementById('m3InfoTitle').textContent='✓ '+d.name+' ('+aa+' / '+d.letter+')';
+  document.getElementById('m3InfoGrid').innerHTML=`
+    <div class="m3-info-item"><strong>Property</strong><span style="color:${col}">${d.prop.charAt(0).toUpperCase()+d.prop.slice(1)}</span></div>
+    <div class="m3-info-item"><strong>Charge</strong>${d.prop==='acidic'?'Negative (−)':d.prop==='basic'?'Positive (+)':'Neutral (0)'}</div>
+    <div class="m3-info-item"><strong>Essential?</strong>${d.essential?'✓ Yes — from diet':'✗ Body makes it'}</div>
+    <div class="m3-info-item"><strong>Found in</strong>${d.food}</div>
+    <div class="m3-info-item" style="grid-column:1/-1"><strong>Biological role</strong>${d.bio}</div>
+    <div class="m3-info-item" style="grid-column:1/-1"><strong>Fact</strong>${d.fact}</div>`;
+  if(m3State.matched>=m3State.pairs.length) setTimeout(endM3Round,1200);
+}
+document.getElementById('m3NextBtn').addEventListener('click',()=>document.getElementById('m3InfoPanel').style.display='none');
+function endM3Round(){stopM3Timer();document.getElementById('m3Complete').style.display='flex';const acc=Math.round((m3State.pairs.length/(m3State.pairs.length+m3State.wrongs))*100);document.getElementById('m3FinalScore').textContent=m3State.score+' pts';document.getElementById('m3FinalMsg').textContent=`${m3State.pairs.length} matched · ${acc}% accuracy · ${m3State.wrongs} wrong`;document.getElementById('m3FinalTime').textContent=`Time: ${Math.floor(m3State.elapsed/60)}m ${m3State.elapsed%60}s`;}
+document.getElementById('m3PlayAgain').addEventListener('click',()=>startM3());
+document.getElementById('m3GoHome').addEventListener('click',()=>{stopM3Timer();showScreen('homeScreen');});
+document.querySelectorAll('.diff-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');m3State.diff=b.dataset.diff;startM3();});});
+// Filter buttons
+document.querySelectorAll('.m3-filter').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.m3-filter').forEach(x=>{x.classList.remove('active-np','active-po','active-ac','active-ba','active-all');});
+    const f=b.dataset.filter;m3State.filter=f;
+    const cls={all:'active-all',nonpolar:'active-np',polar:'active-po',acidic:'active-ac',basic:'active-ba'};
+    b.classList.add(cls[f]||'active-all');startM3();
+  });
+});
+function startM3Timer(){stopM3Timer();m3State.elapsed=0;m3State.timer=setInterval(()=>{m3State.elapsed++;const m=Math.floor(m3State.elapsed/60),s=m3State.elapsed%60;document.getElementById('m3TimerVal').textContent=m+':'+(s<10?'0':'')+s;},1000);}
+function stopM3Timer(){if(m3State.timer){clearInterval(m3State.timer);m3State.timer=null;}}
+
+// ============================================================
+// MODULE 4: GLYCOLYSIS PATHWAY BUILDER
+// ============================================================
+const GLYCOLYSIS_STEPS=[
+  {id:0,molecule:'Glucose',formula:'C₆H₁₂O₆',product:'Glucose-6-phosphate',enzyme:'Hexokinase',atp:'-1 ATP',icon:'⚡',fact:'Glucose enters the cell and is immediately phosphorylated. The phosphate group (from ATP) traps glucose inside the cell — it cannot exit through glucose transporters.'},
+  {id:1,molecule:'Glucose-6-phosphate',formula:'C₆H₁₃O₉P',product:'Fructose-6-phosphate',enzyme:'Phosphoglucose isomerase',atp:'',icon:'🔄',fact:'Glucose-6-phosphate is rearranged into fructose-6-phosphate. This isomerization is required for the next phosphorylation step.'},
+  {id:2,molecule:'Fructose-6-phosphate',formula:'C₆H₁₃O₉P',product:'Fructose-1,6-bisphosphate',enzyme:'Phosphofructokinase-1',atp:'-1 ATP',icon:'⚡',fact:'The rate-limiting step of glycolysis! PFK-1 is the major regulatory enzyme. Adding a second phosphate "primes" the molecule for splitting. Inhibited by high ATP (the cell has enough energy).'},
+  {id:3,molecule:'Fructose-1,6-bisphosphate',formula:'C₆H₁₄O₁₂P₂',product:'2× DHAP + G3P',enzyme:'Aldolase',atp:'',icon:'✂️',fact:'The 6-carbon sugar is split into two 3-carbon molecules: dihydroxyacetone phosphate (DHAP) and glyceraldehyde-3-phosphate (G3P). Only G3P continues; DHAP is converted to G3P by triose phosphate isomerase.'},
+  {id:4,molecule:'Glyceraldehyde-3-phosphate',formula:'C₃H₇O₆P',product:'1,3-Bisphosphoglycerate',enzyme:'GAPDH',atp:'+NADH',icon:'⚗️',fact:'G3P is oxidized and phosphorylated simultaneously. This step captures energy as NADH — the electron carrier that will power ATP synthesis in the mitochondria later. This is where oxidation begins.'},
+  {id:5,molecule:'1,3-Bisphosphoglycerate',formula:'C₃H₈O₁₀P₂',product:'3-Phosphoglycerate',enzyme:'Phosphoglycerate kinase',atp:'+2 ATP',icon:'💎',fact:'First ATP production step! Substrate-level phosphorylation directly transfers a phosphate group to ADP. Since there are 2 G3P molecules (from step 4), this produces 2 ATP — recovering the 2 ATP invested in steps 1 and 3.'},
+  {id:6,molecule:'3-Phosphoglycerate',formula:'C₃H₇O₇P',product:'2-Phosphoglycerate',enzyme:'Phosphoglycerate mutase',atp:'',icon:'🔄',fact:'The phosphate group moves from carbon 3 to carbon 2. This repositioning prepares the molecule for the dehydration step that follows — it\'s a simple rearrangement with no energy change.'},
+  {id:7,molecule:'2-Phosphoglycerate',formula:'C₃H₇O₇P',product:'Phosphoenolpyruvate (PEP)',enzyme:'Enolase',atp:'-H₂O',icon:'💧',fact:'Water is removed, creating phosphoenolpyruvate (PEP). PEP has very high phosphate-transfer potential — this sets up the final, highly exergonic phosphate transfer in the next step.'},
+  {id:8,molecule:'Phosphoenolpyruvate (PEP)',formula:'C₃H₅O₆P',product:'Pyruvate',enzyme:'Pyruvate kinase',atp:'+2 ATP',icon:'💎',fact:'Second ATP production step! PEP is a high-energy molecule that spontaneously transfers its phosphate to ADP. Produces 2 ATP (×2 because 2 G3P). This is the final step of glycolysis. Net gain: 2 ATP per glucose.'},
+  {id:9,molecule:'Pyruvate',formula:'C₃H₄O₃',product:'→ Krebs cycle (aerobic) or Lactate (anaerobic)',enzyme:'End of glycolysis',atp:'',icon:'🏁',fact:'Pyruvate is the final product of glycolysis. Under aerobic conditions, it enters the mitochondria and the Krebs cycle. Under anaerobic conditions (e.g., intense exercise), it converts to lactate — allowing glycolysis to continue by regenerating NAD⁺.'},
+];
+
+function initGlycolysis(){
+  document.getElementById('m4Complete').style.display='none';
+  document.getElementById('m4ScoreVal').textContent='0';
+  // Molecule pool — shuffled
+  const molList=document.getElementById('m4MolList');
+  molList.innerHTML='';
+  const shuffled=[...GLYCOLYSIS_STEPS].sort(()=>Math.random()-0.5);
+  shuffled.forEach(step=>{
+    const el=document.createElement('div');el.className='mol-card';el.dataset.stepId=step.id;el.draggable=true;
+    el.innerHTML=`<div class="mol-name">${step.molecule}</div><div class="mol-formula">${step.formula}</div>`;
+    el.addEventListener('dragstart',e=>{window._m4Drag=step.id;e.dataTransfer.effectAllowed='move';});
+    molList.appendChild(el);
+  });
+  // Pathway slots
+  const stepsEl=document.getElementById('m4Steps');
+  stepsEl.innerHTML='';
+  GLYCOLYSIS_STEPS.forEach((step,i)=>{
+    const row=document.createElement('div');row.className='pathway-step';
+    row.innerHTML=`
+      <div class="step-slot" id="slot-${i}" data-slot="${i}">
+        <span class="slot-num">Step ${i+1}</span>
+        <span class="slot-empty-hint">Drop molecule here</span>
+      </div>
+      <div class="step-arrow">${i<9?'↓':''}</div>
+      <div class="step-info">
+        <div class="step-reaction">${step.atp?`<span style="color:#f59e0b">${step.atp}</span> · `:''}<span style="color:#64748b">→ ${step.product}</span></div>
+        <div class="step-enzyme">Enzyme: ${step.enzyme}</div>
+        <button class="step-popup-btn" data-step="${i}">🔬 Learn more</button>
+      </div>`;
+    stepsEl.appendChild(row);
+    // Drop events on slot
+    const slot=row.querySelector('.step-slot');
+    slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('drag-over');});
+    slot.addEventListener('dragleave',()=>slot.classList.remove('drag-over'));
+    slot.addEventListener('drop',e=>{
+      e.preventDefault();slot.classList.remove('drag-over');
+      if(window._m4Drag===undefined) return;
+      const stepId=window._m4Drag;
+      // Remove from another slot if already placed
+      document.querySelectorAll('.step-slot.filled').forEach(s=>{if(s.dataset.placedStep==stepId){s.dataset.placedStep='';s.classList.remove('filled','correct','wrong-slot');s.innerHTML=`<span class="slot-num">Step ${+s.dataset.slot+1}</span><span class="slot-empty-hint">Drop molecule here</span>`;}});
+      // Clear this slot's molecule card from pool if it was there
+      const step=GLYCOLYSIS_STEPS[stepId];
+      slot.classList.add('filled');slot.dataset.placedStep=stepId;
+      slot.innerHTML=`<span class="slot-num">Step ${i+1}</span><span class="slot-content">${step.molecule}</span>`;
+      // Mark pool card used
+      document.querySelectorAll('.mol-card').forEach(c=>{c.classList.toggle('used',c.dataset.stepId==stepId);});
+      window._m4Drag=undefined;
+    });
+  });
+  // Learn more popups
+  document.querySelectorAll('.step-popup-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const step=GLYCOLYSIS_STEPS[+btn.dataset.step];
+      window.showSciPopup(step.icon,'STEP '+(+btn.dataset.step+1)+': '+step.enzyme,`Molecule: ${step.molecule}\nProduct: ${step.product}\nEnergy: ${step.atp||'No ATP change'}\n\n${step.fact}`,'Berg JM, Tymoczko JL, Stryer L. Biochemistry (2015)');
+    });
+  });
+}
+
+document.getElementById('m4CheckBtn').addEventListener('click',()=>{
+  let correct=0;
+  GLYCOLYSIS_STEPS.forEach((step,i)=>{
+    const slot=document.getElementById('slot-'+i);
+    if(!slot) return;
+    const placed=+slot.dataset.placedStep;
+    if(slot.classList.contains('filled')){
+      if(placed===i){slot.classList.add('correct');slot.classList.remove('wrong-slot');correct++;}
+      else{slot.classList.add('wrong-slot');slot.classList.remove('correct');}
+    }
+  });
+  document.getElementById('m4ScoreVal').textContent=correct;
+  if(correct===10){
+    document.getElementById('m4Complete').style.display='flex';
+    document.getElementById('m4FinalScore').textContent='10 / 10 ⭐';
+    document.getElementById('m4FinalMsg').textContent='Perfect! You know the entire glycolysis pathway. Net yield: 2 ATP, 2 NADH, and 2 Pyruvate per glucose molecule.';
+  } else {
+    window.showSciPopup('⚡','GLYCOLYSIS CHECK',`You got ${correct}/10 steps correct.\n\nGreen slots are correct. Red slots need fixing.\n\nRemember: Glycolysis starts with Glucose and ends with Pyruvate, producing a net of 2 ATP per glucose molecule.`,'');
+  }
+});
+document.getElementById('m4PlayAgain').addEventListener('click',()=>initGlycolysis());
+document.getElementById('m4GoHome').addEventListener('click',()=>showScreen('homeScreen'));
+
+// ============================================================
+// SCIENCE POPUP
+// ============================================================
+window.showSciPopup=function(icon,title,body,src){document.getElementById('spIcon').textContent=icon;document.getElementById('spTitle').textContent=title;document.getElementById('spBody').textContent=body;document.getElementById('spSrc').textContent=src||'';document.getElementById('sciPopup').classList.add('vis');};
+window.closeSciPopup=function(){document.getElementById('sciPopup').classList.remove('vis');};
+</script>
+</body>
+</html>
