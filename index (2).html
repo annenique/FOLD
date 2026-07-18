@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLD — Protein Biology Game</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#050a14;overflow:hidden;font-family:'Courier New',monospace;color:#f1f5f9;}
+canvas{display:block;}
+
+/* SHARED */
+.pill{font-size:9px;padding:2px 8px;border-radius:8px;display:inline-block;letter-spacing:0.05em;border:1px solid;}
+.pill-purple{background:rgba(167,139,250,0.12);color:#c4b5fd;border-color:#a78bfa;}
+.pill-green{background:rgba(52,211,153,0.12);color:#34d399;border-color:#34d399;}
+.pill-blue{background:rgba(96,165,250,0.12);color:#60a5fa;border-color:#60a5fa;}
+.pill-yellow{background:rgba(251,191,36,0.12);color:#fbbf24;border-color:#fbbf24;}
+.pill-red{background:rgba(239,68,68,0.12);color:#ef4444;border-color:#ef4444;}
+
+/* HOME */
+#home{position:fixed;inset:0;z-index:200;background:radial-gradient(ellipse at 50% 30%,#0d1f3c,#050a14);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#home h1{font-size:clamp(44px,8vw,84px);letter-spacing:0.25em;font-weight:normal;
+  background:linear-gradient(135deg,#a78bfa,#60a5fa,#34d399);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px;}
+#home p{font-size:12px;color:#64748b;letter-spacing:0.1em;margin-bottom:28px;}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:780px;width:100%;margin-bottom:20px;}
+.home-btn{flex:1;background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.1);
+  border-radius:12px;padding:22px 18px;cursor:pointer;transition:all 0.2s;text-align:left;}
+.home-btn:hover{transform:translateY(-3px);border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.06);}
+.hb-label{font-size:9px;color:#475569;letter-spacing:0.14em;margin-bottom:10px;}
+.hb-name{font-size:15px;font-weight:bold;color:#f1f5f9;margin-bottom:5px;}
+.hb-desc{font-size:11px;color:#94a3b8;line-height:1.6;margin-bottom:10px;}
+
+/* TOP BAR */
+#topBar{position:fixed;top:0;left:0;right:0;z-index:50;
+  background:rgba(5,10,20,0.9);backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  display:none;align-items:center;gap:14px;padding:9px 18px;}
+.tb-brand{font-size:12px;letter-spacing:0.2em;color:#a78bfa;}
+.tb-title{font-size:12px;color:#f1f5f9;font-weight:bold;}
+.tb-sub{font-size:10px;color:#475569;}
+#tbBack{padding:5px 13px;border:1px solid #1e293b;border-radius:5px;background:transparent;
+  color:#64748b;font-size:10px;cursor:pointer;font-family:inherit;margin-left:auto;}
+#tbBack:hover{border-color:#a78bfa;color:#a78bfa;}
+#fpsCnt{font-size:9px;color:#0f172a;}
+
+/* ── MODULE 1: PROTEIN EXPLORER ── */
+#m1Picker{position:fixed;inset:0;z-index:80;
+  background:radial-gradient(ellipse at 50% 30%,#0d1f3c,#050a14);
+  display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+#m1Picker h2{font-size:clamp(20px,4vw,38px);letter-spacing:0.18em;font-weight:normal;color:#a78bfa;margin-bottom:5px;}
+#m1Picker .sub{font-size:11px;color:#475569;margin-bottom:20px;}
+.prot-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;max-width:660px;width:100%;}
+.prot-card{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.09);
+  border-radius:10px;padding:15px;cursor:pointer;transition:all 0.2s;}
+.prot-card:hover{border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.07);transform:translateY(-2px);}
+.pc-name{font-size:13px;font-weight:bold;color:#f1f5f9;margin-bottom:3px;}
+.pc-sub{font-size:10px;color:#475569;margin-bottom:8px;}
+.pc-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;}
+.pct{font-size:8px;padding:2px 7px;border-radius:6px;border:1px solid;}
+.pct-b{color:#60a5fa;border-color:#60a5fa;background:rgba(96,165,250,0.1);}
+.pct-r{color:#ef4444;border-color:#ef4444;background:rgba(239,68,68,0.1);}
+.pct-y{color:#fbbf24;border-color:#fbbf24;background:rgba(251,191,36,0.1);}
+.pct-p{color:#a78bfa;border-color:#a78bfa;background:rgba(167,139,250,0.1);}
+.pc-dis{font-size:9px;padding:2px 8px;border-radius:7px;}
+.d2{color:#60a5fa;border:1px solid #60a5fa;background:rgba(96,165,250,0.1);}
+.d3{color:#fbbf24;border:1px solid #fbbf24;background:rgba(251,191,36,0.1);}
+.d4{color:#f97316;border:1px solid #f97316;background:rgba(249,115,22,0.1);}
+.d5{color:#ef4444;border:1px solid #ef4444;background:rgba(239,68,68,0.1);}
+#ppBack{margin-top:14px;padding:6px 18px;border:1px solid #1e293b;border-radius:6px;
+  background:transparent;color:#475569;font-size:11px;cursor:pointer;font-family:inherit;}
+#ppBack:hover{border-color:#a78bfa;color:#a78bfa;}
+
+/* Explorer overlays */
+#intBar{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:50;
+  background:rgba(5,10,20,0.9);border:1px solid rgba(255,255,255,0.08);
+  border-radius:7px;padding:8px 15px;text-align:center;min-width:240px;display:none;}
+.ibl{font-size:9px;letter-spacing:0.14em;color:#a78bfa;margin-bottom:4px;}
+.ibt{width:100%;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:3px;}
+#intFill{height:100%;width:100%;border-radius:3px;transition:width 0.5s,background 0.5s;background:#4ade80;}
+.ibs{font-size:10px;color:#64748b;}#intStatus{font-weight:bold;color:#4ade80;}
+#structLvls{position:fixed;top:54px;left:14px;z-index:50;display:none;flex-direction:column;gap:4px;}
+.slvl{font-size:9px;padding:3px 9px;border-radius:5px;border:1px solid;letter-spacing:0.05em;}
+#bodyLoc{position:fixed;top:54px;right:14px;z-index:50;
+  background:rgba(5,10,20,0.9);border:1px solid rgba(255,255,255,0.08);
+  border-radius:7px;padding:9px 12px;max-width:185px;display:none;}
+#bodyLoc h4{font-size:9px;letter-spacing:0.1em;color:#a78bfa;margin-bottom:5px;}
+#bodyLocTxt{font-size:10px;color:#94a3b8;line-height:1.5;}
+#params{position:fixed;bottom:74px;right:14px;z-index:50;
+  background:rgba(5,10,20,0.9);border:1px solid rgba(255,255,255,0.08);
+  border-radius:9px;padding:12px;width:210px;display:none;}
+#params h3{font-size:9px;letter-spacing:0.14em;color:#a78bfa;margin-bottom:10px;}
+.pr{margin-bottom:10px;}
+.ph{display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin-bottom:3px;}
+.pv{color:#f1f5f9;font-weight:bold;}
+.ps{-webkit-appearance:none;width:100%;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;outline:none;cursor:pointer;}
+.ps::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#a78bfa;cursor:pointer;}
+.pe{font-size:10px;color:#94a3b8;margin-top:3px;line-height:1.35;}
+#mutBtn{width:100%;padding:7px;border:1px solid #ef4444;border-radius:6px;
+  background:rgba(239,68,68,0.08);color:#fca5a5;font-size:10px;letter-spacing:0.06em;
+  cursor:pointer;font-family:inherit;margin-top:4px;transition:all 0.2s;}
+#mutBtn:hover{background:rgba(239,68,68,0.18);}
+#mutBtn.active{background:rgba(239,68,68,0.26);}
+#mutInfo{font-size:10px;color:#fca5a5;margin-top:4px;line-height:1.4;display:none;}
+#infoBar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:50;
+  background:rgba(5,10,20,0.9);border:1px solid rgba(255,255,255,0.08);
+  border-radius:9px;max-width:460px;width:87%;display:none;overflow:hidden;}
+#infoHead{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;cursor:pointer;}
+#infoHead .iht{font-size:10px;letter-spacing:0.1em;color:#a78bfa;font-weight:bold;}
+#infoTgl{font-size:10px;color:#334155;}
+#infoBod{padding:9px 13px 11px;display:none;border-top:1px solid rgba(255,255,255,0.06);}
+#infoWhat{font-size:11px;color:#f1f5f9;line-height:1.65;margin-bottom:6px;}
+#infoWhy{font-size:10px;color:#94a3b8;line-height:1.6;margin-bottom:6px;
+  padding:7px 9px;background:rgba(167,139,250,0.07);border-radius:5px;border-left:2px solid #a78bfa;}
+#infoFacts{display:flex;gap:4px;flex-wrap:wrap;}
+.ifc{font-size:9px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,0.07);color:#94a3b8;border:1px solid rgba(255,255,255,0.09);}
+#legend{position:fixed;bottom:12px;left:14px;z-index:50;
+  background:rgba(5,10,20,0.88);border:1px solid rgba(255,255,255,0.07);border-radius:7px;padding:8px 11px;display:none;}
+#legend h4{font-size:8px;letter-spacing:0.12em;color:#334155;margin-bottom:5px;}
+.lgr{display:flex;align-items:center;gap:5px;font-size:10px;color:#94a3b8;margin-bottom:3px;}
+.lgd{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+/* ── MODULE 3: 3D MATCHING ── */
+#m3Screen{position:fixed;inset:0;z-index:130;display:none;flex-direction:column;background:#050a14;}
+#m3Top{position:fixed;top:0;left:0;right:0;z-index:145;
+  background:rgba(5,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.07);
+  display:flex;align-items:center;gap:10px;padding:9px 16px;flex-wrap:wrap;}
+.m3brand{font-size:11px;letter-spacing:0.16em;color:#60a5fa;}
+.m3filt{padding:4px 11px;border-radius:5px;font-size:9px;letter-spacing:0.07em;
+  cursor:pointer;font-family:inherit;border:1px solid #1e293b;color:#475569;background:transparent;transition:all 0.2s;}
+.m3filt:hover{border-color:#64748b;color:#94a3b8;}
+.m3filt.fnp{border-color:#fbbf24;color:#fbbf24;background:rgba(251,191,36,0.08);}
+.m3filt.fpo{border-color:#60a5fa;color:#60a5fa;background:rgba(96,165,250,0.08);}
+.m3filt.fac{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,0.08);}
+.m3filt.fba{border-color:#34d399;color:#34d399;background:rgba(52,211,153,0.08);}
+.m3filt.fal{border-color:#a78bfa;color:#a78bfa;background:rgba(167,139,250,0.08);}
+.m3diff{padding:4px 10px;border-radius:5px;font-size:9px;letter-spacing:0.07em;
+  cursor:pointer;font-family:inherit;border:1px solid #1e293b;color:#475569;background:transparent;transition:all 0.2s;}
+.m3diff.active{border-color:#60a5fa;color:#60a5fa;background:rgba(96,165,250,0.08);}
+#m3Sc{font-size:12px;color:#f1f5f9;white-space:nowrap;}
+#m3Tim{font-size:11px;color:#fbbf24;}
+#m3Back{padding:5px 12px;border:1px solid #1e293b;border-radius:5px;background:transparent;color:#475569;font-size:10px;cursor:pointer;font-family:inherit;margin-left:auto;}
+#m3Back:hover{border-color:#a78bfa;color:#a78bfa;}
+
+/* Two-panel layout */
+#m3Body{position:fixed;top:48px;left:0;right:0;bottom:0;display:grid;grid-template-columns:1fr 340px;overflow:hidden;}
+#m3Left{padding:14px;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.06);}
+#m3Right{padding:14px;overflow-y:auto;}
+.col-header{font-size:9px;letter-spacing:0.14em;color:#475569;margin-bottom:12px;}
+
+/* Structure cards — 2-column grid of big 3D canvases */
+#m3SL{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.struct-card{background:rgba(255,255,255,0.03);border:2px solid rgba(255,255,255,0.09);
+  border-radius:10px;padding:10px;cursor:pointer;transition:all 0.2s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;}
+.struct-card:hover{border-color:rgba(96,165,250,0.5);background:rgba(96,165,250,0.05);transform:translateY(-2px);}
+.struct-card.sel{border-color:#60a5fa;background:rgba(96,165,250,0.08);}
+.struct-card.ok{border-color:#4ade80;background:rgba(74,222,128,0.07);cursor:default;pointer-events:none;}
+.struct-card.bad{border-color:#ef4444;background:rgba(239,68,68,0.06);}
+/* Big 3D canvas — the star of the show */
+.struct-canvas{width:130px;height:130px;border-radius:8px;flex-shrink:0;background:#020810;display:block;}
+.struct-meta{width:100%;text-align:center;}
+.struct-prop{font-size:9px;letter-spacing:0.06em;font-weight:bold;margin-bottom:2px;}
+.struct-charge{font-size:9px;color:#475569;}
+.struct-ess{font-size:8px;color:#1e293b;margin-top:2px;}
+
+/* Name cards on the right */
+.name-card{background:rgba(255,255,255,0.03);border:2px solid rgba(255,255,255,0.08);
+  border-radius:8px;padding:12px 14px;margin-bottom:7px;cursor:pointer;transition:all 0.18s;}
+.name-card:hover{border-color:rgba(96,165,250,0.4);background:rgba(96,165,250,0.04);}
+.name-card.sel{border-color:#60a5fa;background:rgba(96,165,250,0.07);}
+.name-card.ok{border-color:#4ade80;background:rgba(74,222,128,0.06);cursor:default;pointer-events:none;}
+.name-card.bad{border-color:#ef4444;background:rgba(239,68,68,0.06);}
+.name-full{font-size:13px;color:#f1f5f9;font-weight:bold;margin-bottom:3px;}
+.name-sub{font-size:10px;color:#475569;}
+
+/* Info reveal panel */
+#m3Info{position:fixed;bottom:0;left:0;right:0;z-index:155;
+  background:rgba(5,10,20,0.98);border-top:1px solid rgba(255,255,255,0.08);
+  padding:13px 20px;display:none;max-height:30vh;overflow-y:auto;}
+#m3InfoTitle{font-size:11px;color:#60a5fa;margin-bottom:8px;font-weight:bold;}
+.ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;}
+.ii{font-size:10px;color:#94a3b8;line-height:1.55;}
+.ii strong{color:#a78bfa;display:block;margin-bottom:2px;font-size:9px;letter-spacing:0.05em;}
+#m3Next{display:block;margin:9px auto 0;padding:7px 20px;border:1px solid #334155;border-radius:5px;
+  background:transparent;color:#64748b;font-size:11px;cursor:pointer;font-family:inherit;}
+#m3Next:hover{border-color:#60a5fa;color:#60a5fa;}
+#m3Hint{font-size:10px;color:#fbbf24;padding:6px 10px;background:rgba(251,191,36,0.06);
+  border:1px solid rgba(251,191,36,0.2);border-radius:5px;margin:6px 14px;
+  display:none;line-height:1.5;position:fixed;bottom:0;left:0;right:0;z-index:154;}
+
+/* Round complete */
+#m3Done{position:fixed;inset:0;z-index:160;background:rgba(5,10,20,0.98);
+  display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#m3Done h2{font-size:36px;color:#60a5fa;letter-spacing:0.15em;font-weight:normal;margin-bottom:8px;}
+#m3DoneScore{font-size:50px;font-weight:bold;color:#f1f5f9;margin:8px 0;}
+#m3DoneMsg{font-size:13px;color:#64748b;max-width:340px;line-height:1.65;margin-bottom:5px;}
+.done-btn{margin-top:16px;padding:10px 26px;border:1.5px solid #60a5fa;border-radius:7px;
+  background:rgba(96,165,250,0.08);color:#60a5fa;font-size:11px;letter-spacing:0.09em;
+  cursor:pointer;font-family:inherit;transition:all 0.2s;}
+.done-btn:hover{background:rgba(96,165,250,0.18);}
+
+/* ── MODULE 3: GLYCOLYSIS ── */
+#glycScreen{position:fixed;inset:0;z-index:120;display:none;flex-direction:column;background:#050a14;}
+#glycTop{position:fixed;top:0;left:0;right:0;z-index:135;background:rgba(5,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:14px;padding:9px 16px;}
+.glycBrand{font-size:11px;letter-spacing:0.16em;color:#f97316;}
+#glycScore{font-size:12px;color:#f1f5f9;white-space:nowrap;}
+#glycBack{padding:5px 12px;border:1px solid #1e293b;border-radius:5px;background:transparent;color:#475569;font-size:10px;cursor:pointer;font-family:inherit;margin-left:auto;}
+#glycBack:hover{border-color:#f97316;color:#f97316;}
+#glycBody{position:fixed;top:48px;left:0;right:0;bottom:0;z-index:125;display:grid;grid-template-columns:260px 1fr;overflow:hidden;}
+/* Molecule pool */
+#glycPool{background:rgba(5,10,20,0.97);border-right:1px solid rgba(255,255,255,0.06);padding:14px;overflow-y:auto;}
+#glycPool h3{font-size:9px;letter-spacing:0.15em;color:#f97316;margin-bottom:10px;}
+.gmol{background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 12px;margin-bottom:7px;cursor:grab;transition:all 0.2s;user-select:none;}
+.gmol:hover{border-color:rgba(249,115,22,0.5);background:rgba(249,115,22,0.06);}
+.gmol.used{opacity:0.3;cursor:default;pointer-events:none;}
+.gmol-name{font-size:12px;color:#f1f5f9;font-weight:bold;margin-bottom:2px;}
+.gmol-formula{font-size:10px;color:#64748b;font-family:'Courier New',monospace;}
+/* Pathway */
+#glycPath{padding:16px 20px;overflow-y:auto;}
+#glycPath h3{font-size:9px;letter-spacing:0.15em;color:#f97316;margin-bottom:14px;}
+.gstep{display:grid;grid-template-columns:180px 28px 1fr;align-items:center;gap:10px;margin-bottom:6px;}
+.gslot{background:rgba(255,255,255,0.03);border:2px dashed rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;min-height:46px;display:flex;align-items:center;cursor:default;transition:all 0.2s;position:relative;}
+.gslot:hover{border-color:rgba(249,115,22,0.35);}
+.gslot.drag-over{border-color:#f97316;background:rgba(249,115,22,0.08);}
+.gslot.filled{border-style:solid;border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);}
+.gslot.correct{border-color:#4ade80;background:rgba(74,222,128,0.07);}
+.gslot.wrong-slot{border-color:#ef4444;background:rgba(239,68,68,0.07);}
+.gslot-num{position:absolute;top:3px;left:7px;font-size:8px;color:#334155;letter-spacing:0.06em;}
+.gslot-content{font-size:11px;color:#f1f5f9;font-weight:bold;}
+.gslot-empty{font-size:10px;color:#1e293b;}
+.garrow{font-size:16px;color:#334155;text-align:center;}
+.ginfo{font-size:10px;color:#475569;line-height:1.5;}
+.ginfo .gatp{color:#f59e0b;font-weight:bold;}
+.ginfo .genz{color:#334155;font-size:9px;margin-top:2px;}
+.glearnbtn{font-size:9px;padding:2px 7px;border:1px solid #334155;border-radius:4px;background:transparent;color:#475569;cursor:pointer;font-family:inherit;margin-top:3px;transition:all 0.18s;}
+.glearnbtn:hover{border-color:#f97316;color:#f97316;}
+#glycCheckBtn{display:block;margin:16px auto;padding:10px 28px;border:1.5px solid #f97316;border-radius:8px;background:rgba(249,115,22,0.1);color:#fdba74;font-size:12px;letter-spacing:0.1em;cursor:pointer;font-family:inherit;transition:all 0.22s;}
+#glycCheckBtn:hover{background:rgba(249,115,22,0.2);}
+#glycDone{position:fixed;inset:0;z-index:140;background:rgba(5,10,20,0.97);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#glycDone h2{font-size:36px;color:#f97316;letter-spacing:0.12em;font-weight:normal;margin-bottom:8px;}
+#glycDoneScore{font-size:52px;font-weight:bold;color:#f1f5f9;margin:8px 0;}
+#glycDoneMsg{font-size:13px;color:#94a3b8;max-width:380px;line-height:1.65;margin-bottom:5px;}
+.glyc-btn{margin-top:18px;padding:10px 26px;border:1.5px solid #f97316;border-radius:7px;background:rgba(249,115,22,0.1);color:#fdba74;font-size:11px;letter-spacing:0.09em;cursor:pointer;font-family:inherit;transition:all 0.2s;}
+.glyc-btn:hover{background:rgba(249,115,22,0.2);}
+
+/* Science popup */
+#sci{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);
+  background:rgba(5,10,20,0.99);border:1px solid rgba(167,139,250,0.35);
+  border-radius:11px;padding:22px 24px;max-width:370px;width:90%;z-index:300;
+  opacity:0;pointer-events:none;transition:all 0.28s;text-align:center;backdrop-filter:blur(14px);}
+#sci.vis{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto;}
+#sci .si{font-size:10px;color:#94a3b8;letter-spacing:0.06em;margin-bottom:2px;}
+#sci .st{font-size:11px;color:#c4b5fd;letter-spacing:0.1em;margin-bottom:8px;font-weight:bold;}
+#sci .sb{font-size:11px;color:#e2e8f0;line-height:1.75;margin-bottom:8px;text-align:left;}
+#sci .ss{font-size:9px;color:#334155;font-style:italic;margin-bottom:12px;}
+#sci button{padding:7px 18px;border:1px solid #a78bfa;border-radius:5px;
+  background:transparent;color:#c4b5fd;font-size:10px;letter-spacing:0.07em;cursor:pointer;font-family:inherit;}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home">
+  <h1>F O L D</h1>
+  <p>Protein biology · 3D interactive learning</p>
+  <div class="home-grid">
+    <div class="home-btn" id="goExplore">
+      <div class="hb-label">MODULE 01</div>
+      <div class="hb-name">Protein Explorer</div>
+      <div class="hb-desc">Orbit 4 real proteins in 3D. Change temperature, pH, salt. Apply mutations. Watch denaturation.</div>
+      <span class="pill pill-purple">4 Proteins</span>
+      <span class="pill pill-blue" style="margin-left:4px">Orbit Controls</span>
+    </div>
+    <div class="home-btn" id="goGlyc">
+      <div class="hb-label">MODULE 03</div>
+      <div class="hb-name">Glycolysis Pathway</div>
+      <div class="hb-desc">Drag the 10 molecules into the correct order of glycolysis. Learn what happens at each step — ATP, enzymes, and energy.</div>
+      <span class="pill pill-yellow">10 Steps</span>
+      <span class="pill pill-green" style="margin-left:4px">Drag & Drop</span>
+    </div>
+    <div class="home-btn" id="goMatch">
+      <div class="hb-label">MODULE 02</div>
+      <div class="hb-name">3D Amino Acid Match</div>
+      <div class="hb-desc">Rotating 3D amino acid structures. Click to match names. Filter by property. Three difficulty levels.</div>
+      <span class="pill pill-green">3D Molecules</span>
+      <span class="pill pill-yellow" style="margin-left:4px">20 Amino Acids</span>
+    </div>
+  </div>
+  <p style="font-size:9px;color:#1e293b;letter-spacing:0.08em;">Built for the Ujima Lab</p>
+</div>
+
+<!-- TOP BAR (both modules) -->
+<div id="topBar">
+  <div class="tb-brand">FOLD</div>
+  <div><div class="tb-title" id="tbTitle">—</div><div class="tb-sub" id="tbSub">—</div></div>
+  <div id="fpsCnt">— fps</div>
+  <button id="tbBack">Back to Home</button>
+</div>
+
+<!-- MODULE 1: PROTEIN PICKER -->
+<div id="m1Picker">
+  <h2>PROTEIN EXPLORER</h2>
+  <p class="sub">Choose a protein · Drag to rotate · Scroll to zoom</p>
+  <div class="prot-grid">
+    <div class="prot-card" data-level="antibody">
+      <div class="pc-name">IMMUNOGLOBULIN G</div>
+      <div class="pc-sub">IgG · Y-shaped antibody · 150 kDa</div>
+      <div class="pc-tags">
+        <span class="pct pct-b">1° Sequence</span><span class="pct pct-r">2° β-Sheet</span>
+        <span class="pct pct-y">3° Domain fold</span><span class="pct pct-p">4° Y-tetramer</span>
+      </div>
+      <div class="pc-dis d2">Autoimmune Disease</div>
+    </div>
+    <div class="prot-card" data-level="insulin">
+      <div class="pc-name">INSULIN</div>
+      <div class="pc-sub">Pancreatic hormone · 5.8 kDa</div>
+      <div class="pc-tags">
+        <span class="pct pct-b">1° Sequence</span><span class="pct pct-r">2° α-Helix</span>
+        <span class="pct pct-y">3° Disulfide-locked</span>
+      </div>
+      <div class="pc-dis d3">Diabetes · 537M people</div>
+    </div>
+    <div class="prot-card" data-level="collagen">
+      <div class="pc-name">COLLAGEN</div>
+      <div class="pc-sub">Triple helix · 30% of body protein</div>
+      <div class="pc-tags">
+        <span class="pct pct-b">1° Gly-X-Y repeat</span><span class="pct pct-r">2° Poly-Pro helix</span>
+        <span class="pct pct-p">3°/4° Triple helix</span>
+      </div>
+      <div class="pc-dis d4">Scurvy · Brittle Bones</div>
+    </div>
+    <div class="prot-card" data-level="prion">
+      <div class="pc-name">PRION PROTEIN</div>
+      <div class="pc-sub">PrPc → PrPsc · conformational disease</div>
+      <div class="pc-tags">
+        <span class="pct pct-b">1° Same sequence</span><span class="pct pct-r">2° α→β conversion</span>
+        <span class="pct pct-y">3° Aggregation</span>
+      </div>
+      <div class="pc-dis d5">CJD · Mad Cow · 100% fatal</div>
+    </div>
+  </div>
+  <button id="ppBack">Back to Home</button>
+</div>
+
+<!-- MODULE 1: OVERLAYS (shown after picking protein) -->
+<div id="intBar">
+  <div class="ibl">STRUCTURAL INTEGRITY</div>
+  <div class="ibt"><div id="intFill"></div></div>
+  <div class="ibs">Status: <span id="intStatus">Fully Folded</span></div>
+</div>
+<div id="structLvls"></div>
+<div id="bodyLoc"><h4>FOUND IN THE BODY</h4><div id="bodyLocTxt">—</div></div>
+<div id="params">
+  <h3>CHANGE CONDITIONS</h3>
+  <div class="pr"><div class="ph">Temperature <span class="pv" id="tV">37°C</span></div><input type="range" class="ps" id="tS" min="0" max="100" value="37"><div class="pe" id="tE">Normal body temperature.</div></div>
+  <div class="pr"><div class="ph">pH <span class="pv" id="pV">7.4</span></div><input type="range" class="ps" id="pS" min="0" max="14" value="7.4" step="0.1"><div class="pe" id="pE">Physiological pH.</div></div>
+  <div class="pr"><div class="ph">Salt (mM) <span class="pv" id="sV">150</span></div><input type="range" class="ps" id="sS" min="0" max="500" value="150"><div class="pe" id="sE">Physiological ionic strength.</div></div>
+  <button id="mutBtn">APPLY MUTATION</button>
+  <div id="mutInfo"></div>
+</div>
+<div id="infoBar">
+  <div id="infoHead" onclick="toggleInfo()"><div class="iht" id="infoTitle">PROTEIN</div><div id="infoTgl">expand</div></div>
+  <div id="infoBod"><div id="infoWhat"></div><div id="infoWhy"></div><div id="infoFacts"></div></div>
+</div>
+<div id="legend">
+  <h4>STRUCTURE COLORS</h4>
+  <div class="lgr"><div class="lgd" style="background:#ef4444"></div>Alpha Helix</div>
+  <div class="lgr"><div class="lgd" style="background:#60a5fa"></div>Beta Sheet</div>
+  <div class="lgr"><div class="lgd" style="background:#fbbf24"></div>Loop / Coil</div>
+  <div class="lgr"><div class="lgd" style="background:#a78bfa"></div>Active Site</div>
+  <div class="lgr"><div class="lgd" style="background:#f97316"></div>Cofactor</div>
+</div>
+
+<!-- MODULE 3: 3D MATCHING -->
+<div id="m3Screen">
+  <div id="m3Top">
+    <div class="m3brand">FOLD · MATCH</div>
+    <!-- Filter by property — text only, no emoji -->
+    <button class="m3filt fal" data-f="all">ALL</button>
+    <button class="m3filt" data-f="nonpolar">NONPOLAR</button>
+    <button class="m3filt" data-f="polar">POLAR</button>
+    <button class="m3filt" data-f="acidic">ACIDIC</button>
+    <button class="m3filt" data-f="basic">BASIC</button>
+    <!-- Difficulty -->
+    <button class="m3diff active" data-d="easy">EASY</button>
+    <button class="m3diff" data-d="medium">MED</button>
+    <button class="m3diff" data-d="hard">HARD</button>
+    <div id="m3Sc">Score: <span id="m3ScV">0</span></div>
+    <div id="m3Tim"><span id="m3TmV">0:00</span></div>
+    <button id="m3Back">Home</button>
+  </div>
+  <div id="m3Body">
+    <div id="m3Left"><div class="col-header">STRUCTURES — click to select</div><div id="m3SL"></div></div>
+    <div id="m3Right"><div class="col-header">NAMES — click to match</div><div id="m3NL"></div></div>
+  </div>
+  <div id="m3Hint"></div>
+  <div id="m3Info">
+    <div id="m3InfoTitle">—</div>
+    <div class="ig" id="m3IG"></div>
+    <button id="m3Next">Continue</button>
+  </div>
+  <div id="m3Done">
+    <h2>ROUND COMPLETE</h2>
+    <div id="m3DoneScore">—</div>
+    <p id="m3DoneMsg">—</p>
+    <button class="done-btn" id="m3Again">Play Again</button>
+    <button class="done-btn" id="m3DoneHome" style="margin-top:8px;border-color:#334155;color:#475569;background:transparent;">Home</button>
+  </div>
+</div>
+
+<!-- MODULE 3: GLYCOLYSIS -->
+<div id="glycScreen">
+  <div id="glycTop">
+    <div class="glycBrand">FOLD · GLYCOLYSIS</div>
+    <div id="glycScore">Correct: <span id="glycScV" style="color:#f97316;font-weight:bold">0</span> / 10</div>
+    <button id="glycBack">← Home</button>
+  </div>
+  <div id="glycBody">
+    <div id="glycPool">
+      <h3>MOLECULES — drag to pathway</h3>
+      <div id="glycMolList"></div>
+    </div>
+    <div id="glycPath">
+      <h3>GLYCOLYSIS PATHWAY — 10 STEPS</h3>
+      <div id="glycSteps"></div>
+      <button id="glycCheckBtn">✓ CHECK MY ANSWERS</button>
+    </div>
+  </div>
+  <div id="glycDone">
+    <h2>GLYCOLYSIS COMPLETE! ⚡</h2>
+    <div id="glycDoneScore">—</div>
+    <p id="glycDoneMsg">—</p>
+    <button class="glyc-btn" id="glycAgain">▶ Try Again</button>
+    <button class="glyc-btn" id="glycDoneHome" style="margin-top:8px;border-color:#334155;color:#475569;background:transparent;">← Home</button>
+  </div>
+</div>
+
+<!-- SCIENCE POPUP -->
+<div id="sci">
+  <div class="si" id="sciSub">—</div>
+  <div class="st" id="sciTitle">—</div>
+  <div class="sb" id="sciBody">—</div>
+  <div class="ss" id="sciSrc"></div>
+  <button onclick="closeSci()">Got it</button>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module" src="main.js"></script>
+
+<script>
+// ── AA DATA ─────────────────────────────────────────────────
+const AA={
+  Gly:{name:'Glycine',    l:'G',prop:'nonpolar',charge:0, essential:false,fact:'Simplest amino acid — only hydrogen as side chain. The only residue small enough to fit inside collagen\'s triple helix interior.',food:'Meat, fish, dairy, legumes',bio:'Essential for collagen synthesis. Also functions as a neurotransmitter.'},
+  Ala:{name:'Alanine',    l:'A',prop:'nonpolar',charge:0, essential:false,fact:'Most abundant amino acid in proteins. Methyl side chain is very stable in alpha helices.',food:'Meat, poultry, fish, eggs',bio:'Central to the glucose-alanine cycle linking muscle and liver metabolism.'},
+  Val:{name:'Valine',     l:'V',prop:'nonpolar',charge:0, essential:true, fact:'Branched-chain amino acid. Val6 to Glu mutation causes sickle cell anemia.',food:'Meat, dairy, soy, mushrooms',bio:'The Val6Glu mutation in hemoglobin beta-chain causes sickle cell disease.'},
+  Leu:{name:'Leucine',    l:'L',prop:'nonpolar',charge:0, essential:true, fact:'Most common amino acid in proteins. Must be obtained from diet.',food:'Meat, nuts, seeds, dairy',bio:'Activates mTOR signaling pathway for muscle protein synthesis.'},
+  Ile:{name:'Isoleucine', l:'I',prop:'nonpolar',charge:0, essential:true, fact:'Structural isomer of leucine. Buried in hydrophobic protein cores.',food:'Meat, fish, eggs, seeds',bio:'Branched-chain amino acid critical for hemoglobin function.'},
+  Phe:{name:'Phenylalanine',l:'F',prop:'nonpolar',charge:0,essential:true,fact:'Contains a benzene ring side chain. PKU disease results from inability to metabolize phenylalanine.',food:'Meat, eggs, dairy, soybeans',bio:'Precursor to tyrosine, dopamine, and adrenaline.'},
+  Trp:{name:'Tryptophan', l:'W',prop:'nonpolar',charge:0, essential:true, fact:'Largest standard amino acid. Encoded by a single codon (UGG). Precursor to serotonin.',food:'Turkey, eggs, cheese, nuts',bio:'Precursor to serotonin, melatonin, and the vitamin niacin.'},
+  Met:{name:'Methionine', l:'M',prop:'nonpolar',charge:0, essential:true, fact:'The start codon amino acid — every protein begins with methionine. Contains sulfur.',food:'Meat, fish, eggs, Brazil nuts',bio:'Start codon residue. Donates methyl groups in epigenetic reactions.'},
+  Pro:{name:'Proline',    l:'P',prop:'nonpolar',charge:0, essential:false,fact:'Rigid ring structure creates kinks in helices. Cannot form standard backbone hydrogen bonds.',food:'Meat, dairy, wheat, legumes',bio:'Abundant in collagen (Gly-Pro-Hyp repeats). Creates helix-breaking kinks.'},
+  Ser:{name:'Serine',     l:'S',prop:'polar',   charge:0, essential:false,fact:'Major phosphorylation site in cell signaling pathways.',food:'Meat, dairy, wheat, peanuts',bio:'Phosphorylated by kinases to switch signaling on and off.'},
+  Thr:{name:'Threonine',  l:'T',prop:'polar',   charge:0, essential:true, fact:'Also a phosphorylation target. Found in serine protease active sites.',food:'Meat, dairy, lentils, sesame',bio:'Essential amino acid. Important for gut mucin production.'},
+  Cys:{name:'Cysteine',   l:'C',prop:'polar',   charge:0, essential:false,fact:'Forms disulfide bonds (S-S) that lock protein structure. Critical in antibodies and insulin.',food:'Chicken, eggs, oats, dairy',bio:'Disulfide bonds essential for antibody and insulin stability.'},
+  Tyr:{name:'Tyrosine',   l:'Y',prop:'polar',   charge:0, essential:false,fact:'Target of tyrosine kinases — a major drug target class. Precursor to dopamine.',food:'Chicken, turkey, dairy, oats',bio:'Precursor to dopamine, adrenaline, and thyroid hormones.'},
+  Asn:{name:'Asparagine', l:'N',prop:'polar',   charge:0, essential:false,fact:'Glycosylation site — sugars attach to asparagine during post-translational modification.',food:'Asparagus, dairy, poultry, eggs',bio:'N-linked glycosylation site. Regulates protein folding and targeting.'},
+  Gln:{name:'Glutamine',  l:'Q',prop:'polar',   charge:0, essential:false,fact:'Most abundant free amino acid in blood plasma.',food:'Beef, chicken, fish, dairy',bio:'Primary fuel for intestinal cells and immune cells. Nitrogen transporter.'},
+  Asp:{name:'Aspartate',  l:'D',prop:'acidic',  charge:-1,essential:false,fact:'Negatively charged at physiological pH. Found in enzyme active sites.',food:'Meat, oysters, avocado, asparagus',bio:'Key component of the urea cycle and TCA cycle.'},
+  Glu:{name:'Glutamate',  l:'E',prop:'acidic',  charge:-1,essential:false,fact:'Major excitatory neurotransmitter. The site of the sickle cell mutation in hemoglobin.',food:'Meat, cheese, tomatoes, soy',bio:'Main excitatory neurotransmitter in the brain.'},
+  Lys:{name:'Lysine',     l:'K',prop:'basic',   charge:+1,essential:true, fact:'Positively charged. Histones are rich in lysine — the positive charge binds DNA.',food:'Meat, legumes, dairy, quinoa',bio:'Histone acetylation at lysine residues regulates gene expression.'},
+  Arg:{name:'Arginine',   l:'R',prop:'basic',   charge:+1,essential:false,fact:'Most positively charged standard amino acid. Found in DNA-binding proteins and enzyme active sites.',food:'Meat, nuts, seeds, dairy',bio:'Precursor to nitric oxide. Central to the urea cycle.'},
+  His:{name:'Histidine',  l:'H',prop:'basic',   charge:0.5,essential:true,fact:'Near-neutral pKa lets it switch between charged and uncharged at physiological pH.',food:'Meat, fish, eggs, dairy',bio:'Acts as a proton shuttle in enzyme catalysis and hemoglobin oxygen binding.'},
+};
+const PCOL={nonpolar:'#fbbf24',polar:'#60a5fa',acidic:'#ef4444',basic:'#34d399'};
+const PNODE={nonpolar:{bg:'#78350f',b:'#fbbf24'},polar:{bg:'#1e3a5f',b:'#60a5fa'},acidic:{bg:'#7f1d1d',b:'#ef4444'},basic:{bg:'#064e3b',b:'#34d399'}};
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function show(id){
+  ['home','m1Picker','m3Screen','glycScreen'].forEach(s=>{
+    const e=document.getElementById(s); if(e) e.style.display='none';
+  });
+  document.getElementById('topBar').style.display='none';
+  hideExUI();
+  const t=document.getElementById(id); if(t) t.style.display='flex';
+}
+function hideExUI(){
+  ['intBar','structLvls','bodyLoc','params','infoBar','legend'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.style.display='none';
+  });
+}
+function showExUI(){
+  document.getElementById('intBar').style.display='block';
+  document.getElementById('structLvls').style.display='flex';
+  document.getElementById('bodyLoc').style.display='block';
+  document.getElementById('params').style.display='block';
+  document.getElementById('infoBar').style.display='block';
+  document.getElementById('legend').style.display='block';
+}
+
+document.getElementById('goExplore').addEventListener('click',()=>{
+  show('m1Picker');
+  document.getElementById('topBar').style.display='flex';
+  document.getElementById('tbTitle').textContent='PROTEIN EXPLORER';
+  document.getElementById('tbSub').textContent='Drag to rotate · Scroll to zoom · Change conditions';
+  window._setMode&&window._setMode('explore');
+});
+document.getElementById('goMatch').addEventListener('click',()=>{
+  show('m3Screen');
+  document.getElementById('topBar').style.display='flex';
+  document.getElementById('tbTitle').textContent='AMINO ACID MATCH';
+  document.getElementById('tbSub').textContent='Click a structure, then click the matching name';
+  startM3();
+});
+document.getElementById('tbBack').addEventListener('click',()=>{show('home');window._setMode&&window._setMode('idle');stopTimer();});
+document.getElementById('ppBack').addEventListener('click',()=>show('home'));
+document.getElementById('m3Back').addEventListener('click',()=>{show('home');stopTimer();window._setMode&&window._setMode('idle');});
+
+document.querySelectorAll('.prot-card').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.getElementById('m1Picker').style.display='none';
+    showExUI();
+    window._loadLevel&&window._loadLevel(c.dataset.level);
+  });
+});
+
+// ── MODULE 1 HELPERS ─────────────────────────────────────────
+const PCTX={
+  antibody:{title:'IMMUNOGLOBULIN G',
+    what:'Y-shape: 2 heavy + 2 light chains joined by disulfide bonds. Fab arms hold 6 CDR loops that recognize antigens. Fc stem signals immune cells.',
+    why:'Basis of vaccines and 100+ approved cancer drugs. Disulfide bonds are critical — break them and the Y-shape collapses and antigen binding fails.',
+    facts:['1,320 AA','4 chains','150 kDa','12 disulfide bonds','100+ approved drugs'],
+    loc:'Blood plasma, lymph nodes, spleen. Crosses the placenta to protect fetuses.',
+    lvls:[{l:'1° Sequence',c:'#60a5fa'},{l:'2° Beta-Sheet domains',c:'#ef4444'},{l:'3° Immunoglobulin fold',c:'#fbbf24'},{l:'4° Y-shaped tetramer',c:'#a78bfa'}],
+    mut:'CDR Loop Disruption',
+    mp:{s:'ANTIBODY STRUCTURE',t:'CDR LOOP MUTATION',b:'One amino acid change in a CDR loop can eliminate antigen binding or cause the antibody to attack self-proteins — the molecular basis of autoimmune disease and antibody-based cancer drug design.'}},
+  insulin:{title:'INSULIN',
+    what:'51 amino acid hormone. Two chains (A and B) held by 3 disulfide bonds. Binds the insulin receptor triggering cells to absorb glucose from blood.',
+    why:'537 million people worldwide have diabetes. First protein sequenced (1955, Nobel Prize). First genetically engineered drug (1982). Insulin lispro was engineered by swapping 2 amino acids to triple absorption speed.',
+    facts:['51 AA','2 chains (A+B)','5.8 kDa','3 disulfide bonds','First sequenced 1955'],
+    loc:'Produced in pancreatic beta cells. Stored as zinc hexamers. Released into blood to reach all cells.',
+    lvls:[{l:'1° Sequence',c:'#60a5fa'},{l:'2° Alpha-Helix (B-chain)',c:'#ef4444'},{l:'3° Disulfide-locked fold',c:'#fbbf24'}],
+    mut:'Pro to Leu B28 — Insulin Lispro',
+    mp:{s:'INSULIN STRUCTURE',t:'INSULIN LISPRO',b:'Swapping Pro28-Lys29 to Lys28-Pro29 disrupts the strand causing hexamer formation. Lispro absorbs 3 times faster than natural insulin — acts in 15 minutes instead of 1-2 hours. Rational drug design based on protein structure knowledge.'}},
+  collagen:{title:'COLLAGEN',
+    what:'Triple helix of 3 polypeptide chains. Every third residue must be Glycine — the only amino acid small enough for the interior. Hydroxyproline crosslinks stabilize the helix and require Vitamin C.',
+    why:'30% of total body protein. Scurvy is collagen failing without Vitamin C. Over 1,000 mutations cause brittle bones, loose skin, and blood vessel rupture.',
+    facts:['~1,400 AA per chain','Triple helix','~300 kDa','Gly-X-Y repeat','Requires Vitamin C'],
+    loc:'Skin (70% of dry weight), bone, tendons, cartilage, blood vessel walls, cornea, gut lining.',
+    lvls:[{l:'1° Gly-X-Y repeat',c:'#60a5fa'},{l:'2° Polyproline II helix',c:'#ef4444'},{l:'3°/4° Triple helix',c:'#a78bfa'}],
+    mut:'Gly to Ala — Osteogenesis Imperfecta',
+    mp:{s:'COLLAGEN STRUCTURE',t:'BRITTLE BONE DISEASE',b:'Replacing any Glycine — even with Alanine, the next smallest amino acid — disrupts the triple helix because the methyl group cannot fit in the interior. Collagen fails, causing bones to fracture easily. This is Osteogenesis Imperfecta.'}},
+  prion:{title:'PRION PROTEIN',
+    what:'Same amino acid sequence, two completely different shapes. Normal PrPC is alpha-helical and soluble. Misfolded PrPSc is beta-sheet rich, insoluble, and propagates by converting normal PrPC by contact alone.',
+    why:'1997 Nobel Prize (Prusiner). 100% fatal. No treatment exists. The misfolding principle also explains Alzheimer\'s (amyloid-beta) and Parkinson\'s (alpha-synuclein).',
+    facts:['253 AA','1 chain','~35 kDa','Same sequence — 2 folds','100% fatal'],
+    loc:'Neurons throughout the brain. Normal PrPC on neuronal cell surfaces. PrPSc aggregates destroy brain tissue.',
+    lvls:[{l:'1° Identical sequence',c:'#60a5fa'},{l:'2° Alpha to Beta conversion',c:'#ef4444'},{l:'3° Amyloid aggregation',c:'#fbbf24'}],
+    mut:'Conformational change — no sequence change needed',
+    mp:{s:'PRION MECHANISM',t:'NO MUTATION REQUIRED',b:'Prion disease requires no genetic mutation. The infectious agent is a protein with the identical sequence as the normal form — only the shape differs. PrPSc converts PrPC by contact, creating a chain reaction that destroys neurons. Heat cannot destroy it.'}},
+};
+let infoOpen=false;
+window.toggleInfo=function(){
+  infoOpen=!infoOpen;
+  document.getElementById('infoBod').style.display=infoOpen?'block':'none';
+  document.getElementById('infoTgl').textContent=infoOpen?'collapse':'expand';
+};
+window.updatePCtx=function(key){
+  const c=PCTX[key]; if(!c) return;
+  document.getElementById('infoTitle').textContent=c.title;
+  document.getElementById('infoWhat').textContent=c.what;
+  document.getElementById('infoWhy').textContent=c.why;
+  document.getElementById('infoFacts').innerHTML=c.facts.map(f=>`<span class="ifc">${f}</span>`).join('');
+  document.getElementById('bodyLocTxt').textContent=c.loc;
+  document.getElementById('structLvls').innerHTML=c.lvls.map(l=>`<div class="slvl" style="color:${l.c};border-color:${l.c};background:${l.c}18">${l.l}</div>`).join('');
+  document.getElementById('mutBtn').textContent=c.mut;
+  infoOpen=true;document.getElementById('infoBod').style.display='block';document.getElementById('infoTgl').textContent='collapse';
+};
+document.getElementById('tS').addEventListener('input',function(){
+  const t=+this.value;document.getElementById('tV').textContent=t+'°C';
+  document.getElementById('tE').textContent=t<42?'Normal physiological range.':t<65?'Elevated — proteins begin to stress.':t<80?'Denaturing — hydrogen bonds breaking.':'Complete denaturation.';
+  window._applyP&&window._applyP(t,+document.getElementById('pS').value,+document.getElementById('sS').value);
+});
+document.getElementById('pS').addEventListener('input',function(){
+  const p=+this.value;document.getElementById('pV').textContent=p.toFixed(1);
+  document.getElementById('pE').textContent=p<5?'Acidic. Structure stressed.':p<8?'Physiological.':'Basic. Ionic interactions disrupted.';
+  window._applyP&&window._applyP(+document.getElementById('tS').value,p,+document.getElementById('sS').value);
+});
+document.getElementById('sS').addEventListener('input',function(){
+  const s=+this.value;document.getElementById('sV').textContent=s;
+  document.getElementById('sE').textContent=s<50?'Hypotonic.':s<250?'Physiological.':'High salt — aggregation risk.';
+  window._applyP&&window._applyP(+document.getElementById('tS').value,+document.getElementById('pS').value,s);
+});
+function showScreen(id){show(id);}
+document.getElementById('mutBtn').addEventListener('click',function(){window._applyM&&window._applyM(this);});
+
+// ── MODULE 3: 3D MATCHING ─────────────────────────────────────
+// Each card gets its own Three.js mini-renderer
+const miniRenderers = {}; // aa -> {renderer, scene, camera, mesh, animId}
+
+function buildMiniMolecule(aa) {
+  // Returns a Three.js Group representing the amino acid schematically in 3D
+  // Backbone is always the same; side chain shape is unique per AA
+  const g = new THREE.Group();
+  const col = PCOL[AA[aa].prop] || '#94a3b8';
+  const c3 = new THREE.Color(col);
+
+  // Backbone atoms (Ca-N-C=O simplified)
+  const backMat = new THREE.MeshStandardMaterial({color:0xd4d4d4,roughness:0.5,metalness:0.1});
+  const nAtom  = new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10), new THREE.MeshStandardMaterial({color:0x4488ff,roughness:0.4}));
+  const caAtom = new THREE.Mesh(new THREE.SphereGeometry(0.32,10,10), backMat);
+  const cAtom  = new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10), backMat);
+  const oAtom  = new THREE.Mesh(new THREE.SphereGeometry(0.25,10,10), new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.4}));
+  nAtom.position.set(-0.9,0,0);
+  caAtom.position.set(0,0,0);
+  cAtom.position.set(0.9,0,0);
+  oAtom.position.set(1.2,0.6,0);
+  g.add(nAtom,caAtom,cAtom,oAtom);
+  // Backbone bonds
+  const bondMat = new THREE.MeshStandardMaterial({color:0x555555,roughness:0.7});
+  const mkBond=(a,b)=>{
+    const d=a.distanceTo(b),mid=a.clone().add(b).multiplyScalar(.5);
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,d,6),bondMat);
+    m.position.copy(mid); m.lookAt(b); m.rotateX(Math.PI/2); return m;
+  };
+  g.add(mkBond(nAtom.position,caAtom.position));
+  g.add(mkBond(caAtom.position,cAtom.position));
+  g.add(mkBond(cAtom.position,oAtom.position));
+
+  // Side chain — unique per AA
+  const smat = new THREE.MeshStandardMaterial({color:c3,emissive:c3,emissiveIntensity:0.25,roughness:0.35,metalness:0.1});
+  const smatS= new THREE.MeshStandardMaterial({color:0xfde68a,emissive:new THREE.Color(0xfde68a),emissiveIntensity:0.3,roughness:0.4});
+  const smatN= new THREE.MeshStandardMaterial({color:0x4488ff,roughness:0.4});
+  const smatO= new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.4});
+
+  const scRoot = new THREE.Group(); scRoot.position.set(0,0,0); g.add(scRoot);
+
+  const SIDE = {
+    Gly: ()=>{ /* just H — tiny sphere */
+      scRoot.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(.15,8,8),backMat),{position:new THREE.Vector3(0,.35,0)}));
+    },
+    Ala: ()=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(.32,10,10),smat); m.position.set(0,.7,0); scRoot.add(m); },
+    Val: ()=>{
+      const c=new THREE.Mesh(new THREE.SphereGeometry(.28,8,8),smat); c.position.set(0,.7,0); scRoot.add(c);
+      const l=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); l.position.set(-.45,1.15,0); scRoot.add(l);
+      const r=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); r.position.set(.45,1.15,0); scRoot.add(r);
+    },
+    Leu: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat); cb.position.set(0,.7,0); scRoot.add(cb);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); cg.position.set(-.2,1.2,0); scRoot.add(cg);
+      const d1=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); d1.position.set(-.55,1.65,0); scRoot.add(d1);
+      const d2=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); d2.position.set(.2,1.65,0); scRoot.add(d2);
+    },
+    Ile: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat); cb.position.set(0,.7,0); scRoot.add(cb);
+      const cg1=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg1.position.set(.4,1.15,0); scRoot.add(cg1);
+      const cg2=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg2.position.set(-.35,1.2,.2); scRoot.add(cg2);
+      const cd=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat); cd.position.set(-.55,1.65,.2); scRoot.add(cd);
+    },
+    Phe: ()=>{ /* benzene ring */
+      const stem=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); stem.position.set(0,.65,0); scRoot.add(stem);
+      for(let i=0;i<6;i++){const a=i/6*Math.PI*2; const rm=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); rm.position.set(Math.cos(a)*.5,1.25+Math.sin(a)*.5,0); scRoot.add(rm);}
+    },
+    Trp: ()=>{ /* indole — two rings */
+      const stem=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); stem.position.set(0,.65,0); scRoot.add(stem);
+      for(let i=0;i<5;i++){const a=i/5*Math.PI*2; const rm=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat); rm.position.set(Math.cos(a)*.42,1.2+Math.sin(a)*.42,0); scRoot.add(rm);}
+      for(let i=0;i<6;i++){const a=i/6*Math.PI*2+.4; const rm=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat); rm.position.set(.55+Math.cos(a)*.42,1.1+Math.sin(a)*.42,0); scRoot.add(rm);}
+      const nind=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smatN); nind.position.set(.28,1.6,0); scRoot.add(nind);
+    },
+    Met: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); cb.position.set(0,.65,0); scRoot.add(cb);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg.position.set(0,1.1,0); scRoot.add(cg);
+      const s=new THREE.Mesh(new THREE.SphereGeometry(.3,10,10),smatS); s.position.set(0,1.6,0); scRoot.add(s);
+      const ce=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); ce.position.set(.4,2.0,0); scRoot.add(ce);
+    },
+    Pro: ()=>{ /* pyrrolidine ring */
+      for(let i=0;i<5;i++){const a=i/5*Math.PI*2; const rm=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); rm.position.set(Math.cos(a)*.5,0.9+Math.sin(a)*.45,0); scRoot.add(rm);}
+    },
+    Ser: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat); cb.position.set(0,.68,0); scRoot.add(cb);
+      const oh=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO); oh.position.set(0,1.15,0); scRoot.add(oh);
+    },
+    Thr: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat); cb.position.set(0,.68,0); scRoot.add(cb);
+      const oh=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO); oh.position.set(-.4,1.1,0); scRoot.add(oh);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg.position.set(.4,1.1,0); scRoot.add(cg);
+    },
+    Cys: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat); cb.position.set(0,.68,0); scRoot.add(cb);
+      const sh=new THREE.Mesh(new THREE.SphereGeometry(.3,10,10),smatS); sh.position.set(0,1.2,0); scRoot.add(sh);
+    },
+    Tyr: ()=>{
+      const stem=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); stem.position.set(0,.55,0); scRoot.add(stem);
+      const cb2=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat); cb2.position.set(0,.95,0); scRoot.add(cb2);
+      for(let i=0;i<6;i++){const a=i/6*Math.PI*2; const rm=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat); rm.position.set(Math.cos(a)*.42,1.45+Math.sin(a)*.42,0); scRoot.add(rm);}
+      const oh=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatO); oh.position.set(0,1.9,0); scRoot.add(oh);
+    },
+    Asn: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); cb.position.set(0,.68,0); scRoot.add(cb);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg.position.set(0,1.15,0); scRoot.add(cg);
+      const od=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatO); od.position.set(-.38,1.5,0); scRoot.add(od);
+      const nd=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN); nd.position.set(.38,1.5,0); scRoot.add(nd);
+    },
+    Gln: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); cb.position.set(0,.6,0); scRoot.add(cb);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg.position.set(0,1.05,0); scRoot.add(cg);
+      const cd=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cd.position.set(0,1.5,0); scRoot.add(cd);
+      const oe=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatO); oe.position.set(-.38,1.85,0); scRoot.add(oe);
+      const ne=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN); ne.position.set(.38,1.85,0); scRoot.add(ne);
+    },
+    Asp: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); cb.position.set(0,.68,0); scRoot.add(cb);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg.position.set(0,1.15,0); scRoot.add(cg);
+      const od1=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO); od1.position.set(-.42,1.55,0); scRoot.add(od1);
+      const od2=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO); od2.position.set(.42,1.55,0); scRoot.add(od2);
+    },
+    Glu: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); cb.position.set(0,.6,0); scRoot.add(cb);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg.position.set(0,1.05,0); scRoot.add(cg);
+      const cd=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cd.position.set(0,1.5,0); scRoot.add(cd);
+      const oe1=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO); oe1.position.set(-.42,1.9,0); scRoot.add(oe1);
+      const oe2=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO); oe2.position.set(.42,1.9,0); scRoot.add(oe2);
+    },
+    Lys: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); cb.position.set(0,.6,0); scRoot.add(cb);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cg.position.set(0,1.0,0); scRoot.add(cg);
+      const cd=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cd.position.set(0,1.4,0); scRoot.add(cd);
+      const ce=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); ce.position.set(0,1.8,0); scRoot.add(ce);
+      const nz=new THREE.Mesh(new THREE.SphereGeometry(.26,10,10),smatN); nz.position.set(0,2.2,0); scRoot.add(nz);
+    },
+    Arg: ()=>{
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat); cb.position.set(0,.58,0); scRoot.add(cb);
+      const cg=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat); cg.position.set(0,.96,0); scRoot.add(cg);
+      const cd=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat); cd.position.set(0,1.34,0); scRoot.add(cd);
+      const ne=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN); ne.position.set(0,1.7,0); scRoot.add(ne);
+      const cz=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat); cz.position.set(0,2.05,0); scRoot.add(cz);
+      const nh1=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN); nh1.position.set(-.42,2.4,0); scRoot.add(nh1);
+      const nh2=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN); nh2.position.set(.42,2.4,0); scRoot.add(nh2);
+    },
+    His: ()=>{ /* imidazole ring */
+      const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat); cb.position.set(0,.65,0); scRoot.add(cb);
+      const pts=[new THREE.Vector3(0,1.1,0),new THREE.Vector3(-.38,1.5,0),new THREE.Vector3(-.22,1.95,0),new THREE.Vector3(.22,1.95,0),new THREE.Vector3(.38,1.5,0)];
+      pts.forEach((p,i)=>{
+        const rm=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8), i===1||i===3?smatN:smat);
+        rm.position.copy(p); scRoot.add(rm);
+      });
+    },
+  };
+  if(SIDE[aa]) SIDE[aa]();
+
+  return g;
+}
+
+// Create a mini Three.js renderer into a canvas element
+function createMiniRenderer(canvas, aa) {
+  if(miniRenderers[aa]) {
+    // Already exists — just reuse
+    return miniRenderers[aa];
+  }
+  const W=130, H=130;
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x020810, 1);
+
+  const scene = new THREE.Scene();
+  // Slight perspective so depth reads clearly
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
+  camera.position.set(0, 1.2, 6);
+  camera.lookAt(0, 0.8, 0);
+
+  // Better lighting for depth perception
+  scene.add(new THREE.AmbientLight(0x334466, 0.8));
+  const kl = new THREE.DirectionalLight(0xffffff, 1.2);
+  kl.position.set(4, 6, 5); scene.add(kl);
+  const fl = new THREE.DirectionalLight(0x4466ff, 0.4);
+  fl.position.set(-3,-2, 3); scene.add(fl);
+  const rl = new THREE.DirectionalLight(0xff6644, 0.2);
+  rl.position.set(2,-3,-2); scene.add(rl);
+
+  const mol = buildMiniMolecule(aa);
+  // Add bonds between all atoms in the molecule
+  addBonds(mol, scene);
+  scene.add(mol);
+
+  // Start with a slight tilt so molecule reads as 3D immediately
+  mol.rotation.x = 0.3;
+  mol.rotation.y = 0.4;
+
+  const entry = {renderer, scene, camera, mol, animId:null, t:0};
+  miniRenderers[aa] = entry;
+
+  function tick() {
+    entry.animId = requestAnimationFrame(tick);
+    entry.t += 0.01;
+    // Slow auto-rotate with gentle bob
+    mol.rotation.y += 0.015;
+    mol.rotation.x = 0.3 + Math.sin(entry.t * 0.5) * 0.1;
+    renderer.render(scene, camera);
+  }
+  tick();
+  return entry;
+}
+
+function addBonds(group, scene) {
+  // Collect all mesh positions recursively
+  const atoms = [];
+  group.traverse(child => {
+    if (child.isMesh && child.geometry.type.includes('Sphere')) {
+      atoms.push(child.getWorldPosition(new THREE.Vector3()));
+    }
+  });
+  // Connect nearby atoms with cylinder bonds
+  const bondMat = new THREE.MeshStandardMaterial({color:0x334455, roughness:0.7, metalness:0.1});
+  for (let i = 0; i < atoms.length; i++) {
+    for (let j = i+1; j < atoms.length; j++) {
+      const dist = atoms[i].distanceTo(atoms[j]);
+      if (dist < 0.95 && dist > 0.1) {
+        const mid = atoms[i].clone().add(atoms[j]).multiplyScalar(0.5);
+        const bond = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, dist, 5), bondMat);
+        bond.position.copy(mid);
+        bond.lookAt(atoms[j]);
+        bond.rotateX(Math.PI/2);
+        // Add bonds directly to the group so they rotate with it
+        group.add(bond);
+      }
+    }
+  }
+}
+
+function stopAllMini() {
+  Object.values(miniRenderers).forEach(e=>{ if(e.animId) cancelAnimationFrame(e.animId); e.animId=null; });
+}
+
+// ── MATCHING GAME LOGIC ──────────────────────────────────────
+const SETS={
+  easy:  ['Gly','Ala','Val','Leu','Ser','Asp','Glu','Lys'],
+  medium:['Gly','Ala','Val','Phe','Trp','Cys','Tyr','Asp','Glu','Lys','Arg','His'],
+  hard:  Object.keys(AA)
+};
+
+let m3={diff:'easy',filter:'all',score:0,pairs:[],matched:0,wrongs:0,timer:null,elapsed:0};
+let selS=null, selN=null;
+
+function startM3(){
+  stopTimer();
+  // Cancel any previous mini renderers
+  stopAllMini();
+  Object.keys(miniRenderers).forEach(k=>delete miniRenderers[k]);
+
+  let pool=[...SETS[m3.diff]];
+  if(m3.filter!=='all') pool=pool.filter(k=>AA[k].prop===m3.filter);
+  if(pool.length<3) pool=[...SETS[m3.diff]];
+  const cnt={easy:6,medium:8,hard:10}[m3.diff];
+  const keys=[...pool].sort(()=>Math.random()-.5).slice(0,cnt);
+
+  m3={...m3,score:0,pairs:keys,matched:0,wrongs:0,elapsed:0};
+  selS=null; selN=null;
+  document.getElementById('m3ScV').textContent='0';
+  document.getElementById('m3Info').style.display='none';
+  document.getElementById('m3Done').style.display='none';
+  document.getElementById('m3Hint').style.display='none';
+  renderM3(keys);
+  startTimer();
+}
+
+function renderM3(keys) {
+  const sl=document.getElementById('m3SL'), nl=document.getElementById('m3NL');
+  sl.innerHTML=''; nl.innerHTML='';
+  const sOrd=[...keys].sort(()=>Math.random()-.5);
+  const nOrd=[...keys].sort(()=>Math.random()-.5);
+
+  sOrd.forEach(aa=>{
+    const d=AA[aa], col=PCOL[d.prop];
+    const card=document.createElement('div');
+    card.className='struct-card'; card.dataset.aa=aa; card.id='sc-'+aa;
+    // 3D canvas — now 130×130, the main visual
+    const cvs=document.createElement('canvas');
+    cvs.className='struct-canvas';
+    card.appendChild(cvs);
+    // Compact meta below canvas
+    const meta=document.createElement('div');
+    meta.className='struct-meta';
+    meta.innerHTML=`<div class="struct-prop" style="color:${col}">${d.prop.toUpperCase()}</div>
+      <div class="struct-charge">${d.prop==='acidic'?'−':d.prop==='basic'?'+':'○'} ${d.prop==='acidic'?'negative':d.prop==='basic'?'positive':'neutral'}</div>
+      <div class="struct-ess">${d.essential?'Essential':'Non-essential'}</div>`;
+    card.appendChild(meta);
+    card.addEventListener('click',()=>pickStruct(aa));
+    sl.appendChild(card);
+    // Spin up mini renderer after DOM paint
+    requestAnimationFrame(()=>{
+      cvs.width=130; cvs.height=130;
+      createMiniRenderer(cvs, aa);
+    });
+  });
+
+  nOrd.forEach(aa=>{
+    const d=AA[aa], col=PCOL[d.prop];
+    const card=document.createElement('div');
+    card.className='name-card'; card.dataset.aa=aa; card.id='nc-'+aa;
+    card.innerHTML=`<div class="name-full">${d.name}</div>
+      <div class="name-sub">${aa} &middot; ${d.l} &middot; <span style="color:${col}">${d.prop}</span></div>`;
+    card.addEventListener('click',()=>pickName(aa));
+    nl.appendChild(card);
+  });
+}
+
+function pickStruct(aa){
+  if(document.getElementById('sc-'+aa)?.classList.contains('ok')) return;
+  selS=aa;
+  document.querySelectorAll('.struct-card:not(.ok)').forEach(e=>e.classList.remove('sel'));
+  document.getElementById('sc-'+aa)?.classList.add('sel');
+  tryPair();
+}
+function pickName(aa){
+  if(document.getElementById('nc-'+aa)?.classList.contains('ok')) return;
+  selN=aa;
+  document.querySelectorAll('.name-card:not(.ok)').forEach(e=>e.classList.remove('sel'));
+  document.getElementById('nc-'+aa)?.classList.add('sel');
+  tryPair();
+}
+function tryPair(){
+  if(!selS||!selN) return;
+  const s=selS, n=selN; selS=null; selN=null;
+  if(s===n){
+    document.getElementById('sc-'+s)?.classList.replace('sel','ok');
+    document.getElementById('nc-'+n)?.classList.replace('sel','ok');
+    m3.score+=10;
+    document.getElementById('m3ScV').textContent=m3.score;
+    m3.matched++;
+    showInfo(s);
+  } else {
+    ['sc-'+s,'nc-'+n].forEach(id=>{
+      const e=document.getElementById(id);
+      if(e){e.classList.add('bad');setTimeout(()=>e.classList.remove('bad','sel'),750);}
+    });
+    m3.wrongs++;
+    if(m3.wrongs%2===0){
+      const h=document.getElementById('m3Hint');
+      h.style.display='block';
+      h.textContent='Hint for '+AA[s].name+': '+AA[s].fact;
+      setTimeout(()=>h.style.display='none',5000);
+    }
+  }
+}
+function showInfo(aa){
+  const d=AA[aa], col=PCOL[d.prop];
+  document.getElementById('m3Info').style.display='block';
+  document.getElementById('m3InfoTitle').textContent=d.name+' ('+aa+' / '+d.l+')';
+  document.getElementById('m3IG').innerHTML=`
+    <div class="ii"><strong>Property</strong><span style="color:${col}">${d.prop}</span></div>
+    <div class="ii"><strong>Charge</strong>${d.prop==='acidic'?'Negative':d.prop==='basic'?'Positive':'Neutral'}</div>
+    <div class="ii"><strong>Essential</strong>${d.essential?'Yes — from diet':'No — body makes it'}</div>
+    <div class="ii"><strong>Found in</strong>${d.food}</div>
+    <div class="ii" style="grid-column:1/-1"><strong>Biological role</strong>${d.bio}</div>
+    <div class="ii" style="grid-column:1/-1"><strong>Key fact</strong>${d.fact}</div>`;
+  if(m3.matched>=m3.pairs.length) setTimeout(endRound,1200);
+}
+document.getElementById('m3Next').addEventListener('click',()=>document.getElementById('m3Info').style.display='none');
+
+function endRound(){
+  stopTimer();
+  document.getElementById('m3Done').style.display='flex';
+  const acc=Math.round(m3.pairs.length/(m3.pairs.length+m3.wrongs)*100);
+  document.getElementById('m3DoneScore').textContent=m3.score+' pts';
+  document.getElementById('m3DoneMsg').textContent=m3.pairs.length+' matched · '+acc+'% accuracy · '+m3.wrongs+' wrong · '+Math.floor(m3.elapsed/60)+'m '+m3.elapsed%60+'s';
+}
+
+document.getElementById('m3Again').addEventListener('click',startM3);
+document.getElementById('m3DoneHome').addEventListener('click',()=>{show('home');stopTimer();stopAllMini();});
+
+// Difficulty
+document.querySelectorAll('.m3diff').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.m3diff').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); m3.diff=b.dataset.d; startM3();
+  });
+});
+// Filter
+const FCLS={all:'fal',nonpolar:'fnp',polar:'fpo',acidic:'fac',basic:'fba'};
+document.querySelectorAll('.m3filt').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.m3filt').forEach(x=>Object.values(FCLS).forEach(c=>x.classList.remove(c)));
+    m3.filter=b.dataset.f;
+    b.classList.add(FCLS[b.dataset.f]||'fal');
+    startM3();
+  });
+});
+
+// Timer
+function startTimer(){
+  m3.elapsed=0;
+  m3.timer=setInterval(()=>{
+    m3.elapsed++;
+    const mm=Math.floor(m3.elapsed/60),ss=m3.elapsed%60;
+    document.getElementById('m3TmV').textContent=mm+':'+(ss<10?'0':'')+ss;
+  },1000);
+}
+function stopTimer(){if(m3.timer){clearInterval(m3.timer);m3.timer=null;}}
+
+// ── GLYCOLYSIS MODULE ──────────────────────────────────────────
+const GLYC_STEPS=[
+  {id:0,mol:'Glucose',       formula:'C₆H₁₂O₆',  atp:'-1 ATP', enzyme:'Hexokinase',              fact:'Glucose enters the cell and is immediately phosphorylated using 1 ATP. The phosphate group traps glucose inside — it cannot exit through glucose transporters.'},
+  {id:1,mol:'Glucose-6-P',   formula:'C₆H₁₃O₉P', atp:'',       enzyme:'Phosphoglucose isomerase', fact:'Glucose-6-phosphate is rearranged into fructose-6-phosphate. This isomerization is required for the next phosphorylation step.'},
+  {id:2,mol:'Fructose-6-P',  formula:'C₆H₁₃O₉P', atp:'-1 ATP', enzyme:'PFK-1 (rate-limiting)',    fact:'The committed, rate-limiting step of glycolysis. PFK-1 is the major regulatory enzyme — it is inhibited by high ATP (the cell has enough energy already).'},
+  {id:3,mol:'Fructose-1,6-BP',formula:'C₆H₁₄O₁₂P₂',atp:'',    enzyme:'Aldolase',                 fact:'The 6-carbon sugar is split into two 3-carbon molecules: DHAP and glyceraldehyde-3-phosphate (G3P). Only G3P continues in the main pathway.'},
+  {id:4,mol:'Glyceraldehyde-3-P',formula:'C₃H₇O₆P',atp:'+NADH',enzyme:'GAPDH',                   fact:'G3P is oxidized and phosphorylated, capturing energy as NADH. This is where oxidation begins — the electrons will power ATP synthesis in mitochondria.'},
+  {id:5,mol:'1,3-BPG',       formula:'C₃H₈O₁₀P₂',atp:'+2 ATP', enzyme:'Phosphoglycerate kinase', fact:'First ATP production! Substrate-level phosphorylation directly transfers phosphate to ADP. Since 2 G3P molecules run through, this produces 2 ATP — recovering the investment from steps 1 and 3.'},
+  {id:6,mol:'3-Phosphoglycerate',formula:'C₃H₇O₇P',atp:'',     enzyme:'Phosphoglycerate mutase', fact:'The phosphate group moves from carbon 3 to carbon 2. This repositioning prepares the molecule for dehydration in the next step.'},
+  {id:7,mol:'2-Phosphoglycerate',formula:'C₃H₇O₇P',atp:'-H₂O', enzyme:'Enolase',                 fact:'Water is removed, creating phosphoenolpyruvate (PEP) — a very high-energy molecule. This sets up the final, highly energetic phosphate transfer.'},
+  {id:8,mol:'PEP',            formula:'C₃H₅O₆P',  atp:'+2 ATP', enzyme:'Pyruvate kinase',         fact:'Second ATP production! PEP spontaneously transfers its phosphate to ADP. Produces 2 ATP (×2 for 2 G3P). Net result of glycolysis: 2 ATP per glucose.'},
+  {id:9,mol:'Pyruvate',       formula:'C₃H₄O₃',   atp:'→ Krebs', enzyme:'End of glycolysis',      fact:'Pyruvate is the final product. Under aerobic conditions it enters the Krebs cycle in mitochondria. Under anaerobic conditions it converts to lactate to regenerate NAD⁺.'},
+];
+
+let glycDragId=null;
+
+function initGlyc(){
+  document.getElementById('glycDone').style.display='none';
+  document.getElementById('glycScV').textContent='0';
+  // Molecule pool — shuffled
+  const mol=document.getElementById('glycMolList');
+  mol.innerHTML='';
+  [...GLYC_STEPS].sort(()=>Math.random()-.5).forEach(step=>{
+    const el=document.createElement('div');
+    el.className='gmol'; el.dataset.sid=step.id; el.draggable=true;
+    el.innerHTML=`<div class="gmol-name">${step.mol}</div><div class="gmol-formula">${step.formula}</div>`;
+    el.addEventListener('dragstart',e=>{glycDragId=step.id;e.dataTransfer.effectAllowed='move';});
+    mol.appendChild(el);
+  });
+  // Pathway slots
+  const steps=document.getElementById('glycSteps');
+  steps.innerHTML='';
+  GLYC_STEPS.forEach((step,i)=>{
+    const row=document.createElement('div'); row.className='gstep';
+    const slot=document.createElement('div'); slot.className='gslot'; slot.id='gslot-'+i; slot.dataset.slot=i;
+    slot.innerHTML=`<span class="gslot-num">Step ${i+1}</span><span class="gslot-empty">Drop molecule here</span>`;
+    const arrow=document.createElement('div'); arrow.className='garrow'; arrow.textContent=i<9?'↓':'';
+    const info=document.createElement('div'); info.className='ginfo';
+    info.innerHTML=`${step.atp?`<span class="gatp">${step.atp}</span> · `:''}Enzyme: <span style="color:#94a3b8">${step.enzyme}</span><br><button class="glearnbtn" data-step="${i}">🔬 Learn</button>`;
+    slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('drag-over');});
+    slot.addEventListener('dragleave',()=>slot.classList.remove('drag-over'));
+    slot.addEventListener('drop',e=>{
+      e.preventDefault(); slot.classList.remove('drag-over');
+      if(glycDragId===null) return;
+      // Remove from any other slot
+      document.querySelectorAll('.gslot.filled').forEach(s=>{
+        if(+s.dataset.placedId===glycDragId){
+          s.dataset.placedId=''; s.classList.remove('filled','correct','wrong-slot');
+          s.innerHTML=`<span class="gslot-num">Step ${+s.dataset.slot+1}</span><span class="gslot-empty">Drop molecule here</span>`;
+        }
+      });
+      const step=GLYC_STEPS[glycDragId];
+      slot.classList.add('filled'); slot.dataset.placedId=glycDragId;
+      slot.innerHTML=`<span class="gslot-num">Step ${i+1}</span><span class="gslot-content">${step.mol}</span>`;
+      // Mark pool card
+      document.querySelectorAll('.gmol').forEach(c=>c.classList.toggle('used',+c.dataset.sid===glycDragId));
+      glycDragId=null;
+    });
+    row.appendChild(slot); row.appendChild(arrow); row.appendChild(info);
+    steps.appendChild(row);
+  });
+  // Learn buttons
+  document.querySelectorAll('.glearnbtn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const s=GLYC_STEPS[+btn.dataset.step];
+      window.showSci('⚡','STEP '+(+btn.dataset.step+1)+': '+s.enzyme,
+        'Molecule: '+s.mol+'\nProduct of step → next molecule in chain\nEnergy: '+(s.atp||'No change')+'\n\n'+s.fact,
+        'Berg JM, Stryer L. Biochemistry (2015)');
+    });
+  });
+}
+
+document.getElementById('glycCheckBtn').addEventListener('click',()=>{
+  let correct=0;
+  GLYC_STEPS.forEach((step,i)=>{
+    const slot=document.getElementById('gslot-'+i); if(!slot||!slot.classList.contains('filled')) return;
+    if(+slot.dataset.placedId===i){slot.classList.add('correct');slot.classList.remove('wrong-slot');correct++;}
+    else{slot.classList.add('wrong-slot');slot.classList.remove('correct');}
+  });
+  document.getElementById('glycScV').textContent=correct;
+  if(correct===10){
+    document.getElementById('glycDone').style.display='flex';
+    document.getElementById('glycDoneScore').textContent='10 / 10 ⭐';
+    document.getElementById('glycDoneMsg').textContent='Perfect! Net yield of glycolysis: 2 ATP, 2 NADH, and 2 Pyruvate per glucose molecule.';
+  } else {
+    window.showSci('⚡','GLYCOLYSIS CHECK',`${correct}/10 correct.\n\nGreen slots are right. Red slots need fixing.\n\nRemember: Glucose → G6P → F6P → F1,6BP → G3P → 1,3BPG → 3PG → 2PG → PEP → Pyruvate\n\nNet: 2 ATP per glucose.`,'');
+  }
+});
+document.getElementById('glycAgain').addEventListener('click',initGlyc);
+document.getElementById('glycDoneHome').addEventListener('click',()=>showScreen('home'));
+document.getElementById('glycBack').addEventListener('click',()=>showScreen('home'));
+document.getElementById('goGlyc').addEventListener('click',()=>{showScreen('glycScreen');initGlyc();});
+window.showSci=function(sub,title,body,src){
+  document.getElementById('sciSub').textContent=sub||'';
+  document.getElementById('sciTitle').textContent=title;
+  document.getElementById('sciBody').textContent=body;
+  document.getElementById('sciSrc').textContent=src||'';
+  document.getElementById('sci').classList.add('vis');
+};
+window.closeSci=function(){document.getElementById('sci').classList.remove('vis');};
+window.showSciPopup=window.showSci;
+window.closeSciPopup=window.closeSci;
+
+// ── THREE.js import reference for mini renderers ──────────────
+// (loaded as module, needs to be accessible here)
+// We import it via a small trick — the module script exposes THREE to window
+</script>
+
+<!-- Expose THREE to inline script -->
+<script type="module">
+import * as THREE from 'three';
+window.THREE = THREE;
+</script>
+</body>
+</html>
