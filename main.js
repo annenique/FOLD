@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+// Expose to inline scripts (build module, matching module)
+window.THREE = THREE;
+window.OrbitControls = OrbitControls;
 
 // =====================================================
 // FOLD — Day 1: All 5 Protein Structures + Parameters
