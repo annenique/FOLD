@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FOLD — Protein Biology Game</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#050a14;overflow:hidden;font-family:'Courier New',monospace;color:#f1f5f9;}
+canvas{display:block;}
+
+/* HOME */
+#home{position:fixed;inset:0;z-index:200;background:radial-gradient(ellipse at 50% 28%,#0d1f3c,#050a14);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#home h1{font-size:clamp(42px,8vw,80px);letter-spacing:0.25em;font-weight:normal;background:linear-gradient(135deg,#a78bfa,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:5px;}
+.home-sub{font-size:12px;color:#94a3b8;letter-spacing:0.12em;margin-bottom:22px;}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;max-width:780px;width:100%;margin-bottom:18px;}
+.home-btn{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.1);border-radius:13px;padding:19px 16px;cursor:pointer;transition:all 0.22s;text-align:left;}
+.home-btn:hover{transform:translateY(-3px);border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.06);}
+.hb-label{font-size:9px;color:#475569;letter-spacing:0.15em;margin-bottom:7px;}
+.hb-name{font-size:14px;font-weight:bold;color:#f1f5f9;margin-bottom:5px;}
+.hb-desc{font-size:10px;color:#94a3b8;line-height:1.6;margin-bottom:9px;}
+.pill{font-size:9px;padding:2px 8px;border-radius:7px;display:inline-block;letter-spacing:0.05em;}
+.pill-purple{background:rgba(167,139,250,0.15);color:#c4b5fd;border:1px solid #a78bfa;}
+.pill-blue{background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid #60a5fa;}
+.pill-green{background:rgba(52,211,153,0.15);color:#34d399;border:1px solid #34d399;}
+.pill-yellow{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid #fbbf24;}
+.pill-red{background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;}
+
+/* SHARED TOPBAR */
+#topBar{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(5,10,20,0.9);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,0.08);display:none;align-items:center;gap:14px;padding:10px 18px;}
+.tb-brand{font-size:12px;letter-spacing:0.18em;color:#a78bfa;}
+.tb-title{font-size:12px;color:#f1f5f9;font-weight:bold;}
+.tb-sub{font-size:10px;color:#475569;}
+#tbBack{margin-left:auto;padding:5px 13px;border:1px solid #334155;border-radius:5px;background:transparent;color:#94a3b8;font-size:10px;cursor:pointer;font-family:inherit;}
+#tbBack:hover{border-color:#a78bfa;color:#a78bfa;}
+#fpsCnt{font-size:9px;color:#1e293b;}
+
+/* MODULE 1 EXPLORE */
+#m1Picker{position:fixed;inset:0;z-index:170;background:radial-gradient(ellipse at 50% 28%,#0d1f3c,#050a14);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
+#m1Picker h2{font-size:clamp(20px,4vw,40px);letter-spacing:0.18em;font-weight:normal;color:#a78bfa;margin-bottom:6px;}
+#m1Picker p.sub{font-size:11px;color:#64748b;margin-bottom:20px;}
+.prot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:12px;max-width:860px;width:100%;margin-bottom:14px;}
+.prot-card{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:15px;cursor:pointer;transition:all 0.22s;text-align:left;}
+.prot-card:hover{border-color:rgba(167,139,250,0.55);background:rgba(167,139,250,0.07);transform:translateY(-2px);}
+.pc-name{font-size:12px;font-weight:bold;color:#f1f5f9;margin-bottom:2px;}
+.pc-sub{font-size:10px;color:#64748b;margin-bottom:7px;}
+.pc-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;}
+.pct{font-size:9px;padding:2px 7px;border-radius:6px;}
+.pct-b{background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid #60a5fa;}
+.pct-r{background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;}
+.pct-y{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid #fbbf24;}
+.pct-p{background:rgba(167,139,250,0.15);color:#c4b5fd;border:1px solid #a78bfa;}
+.pc-dis{font-size:9px;padding:2px 8px;border-radius:7px;display:inline-block;margin-top:3px;}
+.d2{background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid #60a5fa;}
+.d3{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid #fbbf24;}
+.d4{background:rgba(249,115,22,0.15);color:#f97316;border:1px solid #f97316;}
+.d5{background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;}
+#ppBack{padding:6px 18px;border:1px solid #334155;border-radius:6px;background:transparent;color:#64748b;font-size:10px;cursor:pointer;font-family:inherit;}
+#ppBack:hover{border-color:#a78bfa;color:#a78bfa;}
+
+/* MODULE 1 GAME OVERLAYS */
+#intBar{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:55;background:rgba(5,10,20,0.9);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px 16px;text-align:center;min-width:240px;display:none;}
+.ibl{font-size:9px;letter-spacing:0.14em;color:#a78bfa;margin-bottom:5px;}
+.ibt{width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-bottom:4px;}
+#intFill{height:100%;width:100%;border-radius:3px;transition:width 0.5s,background 0.5s;background:#4ade80;}
+.ibs{font-size:10px;color:#94a3b8;}#intStatus{color:#4ade80;font-weight:bold;}
+#structLvls{position:fixed;top:54px;left:14px;z-index:55;display:none;flex-direction:column;gap:5px;}
+.slvl{font-size:9px;padding:4px 10px;border-radius:6px;border:1px solid;letter-spacing:0.05em;}
+#bodyLoc{position:fixed;top:54px;right:14px;z-index:55;background:rgba(5,10,20,0.9);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 13px;max-width:190px;display:none;}
+#bodyLoc h4{font-size:9px;letter-spacing:0.1em;color:#a78bfa;margin-bottom:5px;}
+#bodyLocTxt{font-size:10px;color:#cbd5e1;line-height:1.55;}
+#params{position:fixed;bottom:78px;right:14px;z-index:55;background:rgba(5,10,20,0.9);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:13px;width:215px;display:none;}
+#params h3{font-size:9px;letter-spacing:0.14em;color:#a78bfa;margin-bottom:10px;}
+.pr{margin-bottom:11px;}.ph{display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-bottom:4px;}.pv{color:#f1f5f9;font-weight:bold;}
+.ps{-webkit-appearance:none;width:100%;height:4px;background:rgba(255,255,255,0.12);border-radius:2px;outline:none;cursor:pointer;}
+.ps::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#a78bfa;cursor:pointer;}
+.pe{font-size:10px;color:#cbd5e1;margin-top:3px;line-height:1.4;}
+#mutBtn{width:100%;padding:8px;border:1px solid #ef4444;border-radius:7px;background:rgba(239,68,68,0.1);color:#fca5a5;font-size:10px;cursor:pointer;font-family:inherit;margin-top:5px;transition:all 0.22s;}
+#mutBtn:hover{background:rgba(239,68,68,0.2);}#mutBtn.active{background:rgba(239,68,68,0.28);}
+#mutInfo{font-size:10px;color:#fca5a5;margin-top:5px;line-height:1.5;display:none;}
+#infoBar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:55;background:rgba(5,10,20,0.9);border:1px solid rgba(255,255,255,0.09);border-radius:10px;max-width:490px;width:88%;display:none;overflow:hidden;}
+#infoHead{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;}
+.iht{font-size:10px;letter-spacing:0.1em;color:#a78bfa;font-weight:bold;}
+#infoTgl{font-size:10px;color:#64748b;}
+#infoBod{padding:10px 14px 12px;display:none;border-top:1px solid rgba(255,255,255,0.07);}
+#infoWhat{font-size:11px;color:#f1f5f9;line-height:1.65;margin-bottom:7px;}
+#infoWhy{font-size:10px;color:#cbd5e1;line-height:1.6;margin-bottom:7px;padding:7px 9px;background:rgba(167,139,250,0.08);border-radius:6px;border-left:2px solid #a78bfa;}
+#infoFacts{display:flex;gap:4px;flex-wrap:wrap;}
+.ifc{font-size:9px;padding:2px 7px;border-radius:7px;background:rgba(255,255,255,0.08);color:#cbd5e1;border:1px solid rgba(255,255,255,0.1);}
+#legend{position:fixed;bottom:12px;left:14px;z-index:55;background:rgba(5,10,20,0.88);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:9px 12px;display:none;}
+#legend h4{font-size:8px;letter-spacing:0.12em;color:#64748b;margin-bottom:6px;}
+.lgr{display:flex;align-items:center;gap:5px;font-size:10px;color:#cbd5e1;margin-bottom:4px;}
+.lgd{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* MODULE 2 MATCHING */
+#m3Screen{position:fixed;inset:0;z-index:130;display:none;flex-direction:column;background:#050a14;}
+#m3Top{position:fixed;top:0;left:0;right:0;z-index:145;background:rgba(5,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:10px;padding:9px 16px;flex-wrap:wrap;}
+.m3brand{font-size:11px;letter-spacing:0.16em;color:#60a5fa;}
+.m3filt{padding:4px 11px;border-radius:5px;font-size:9px;letter-spacing:0.07em;cursor:pointer;font-family:inherit;border:1px solid #1e293b;color:#475569;background:transparent;transition:all 0.2s;}
+.m3filt:hover{border-color:#64748b;color:#94a3b8;}
+.m3filt.fal{border-color:#a78bfa;color:#a78bfa;background:rgba(167,139,250,0.08);}
+.m3filt.fnp{border-color:#fbbf24;color:#fbbf24;background:rgba(251,191,36,0.08);}
+.m3filt.fpo{border-color:#60a5fa;color:#60a5fa;background:rgba(96,165,250,0.08);}
+.m3filt.fac{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,0.08);}
+.m3filt.fba{border-color:#34d399;color:#34d399;background:rgba(52,211,153,0.08);}
+#m3Sc{font-size:12px;color:#f1f5f9;white-space:nowrap;}
+#m3Tim{font-size:11px;color:#fbbf24;}
+#m3Back{padding:5px 12px;border:1px solid #1e293b;border-radius:5px;background:transparent;color:#475569;font-size:10px;cursor:pointer;font-family:inherit;margin-left:auto;}
+#m3Back:hover{border-color:#a78bfa;color:#a78bfa;}
+#m3Body{position:fixed;top:48px;left:0;right:0;bottom:0;display:grid;grid-template-columns:1fr 350px;overflow:hidden;}
+#m3Left{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:16px;position:relative;}
+#m3Progress{font-size:10px;color:#475569;letter-spacing:0.1em;}
+#m3Canvas{width:300px;height:300px;border-radius:14px;background:#020810;display:block;border:1px solid rgba(255,255,255,0.07);}
+#m3PropHint{font-size:11px;letter-spacing:0.08em;padding:4px 14px;border-radius:6px;border:1px solid;}
+#m3Toast{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,0.15);border:1px solid #4ade80;border-radius:8px;padding:9px 16px;font-size:11px;color:#4ade80;text-align:center;max-width:300px;opacity:0;pointer-events:none;transition:opacity 0.3s;white-space:nowrap;}
+#m3Toast.show{opacity:1;}
+#m3Right{border-left:1px solid rgba(255,255,255,0.06);overflow-y:auto;padding:14px 12px;}
+.col-header{font-size:9px;letter-spacing:0.14em;color:#475569;margin-bottom:10px;}
+.name-card{background:rgba(255,255,255,0.03);border:1.5px solid rgba(255,255,255,0.07);border-radius:7px;padding:10px 13px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;}
+.name-card:hover{border-color:rgba(96,165,250,0.45);background:rgba(96,165,250,0.05);}
+.name-card.bad{border-color:#ef4444!important;background:rgba(239,68,68,0.08);}
+.name-card.ok-flash{border-color:#4ade80!important;background:rgba(74,222,128,0.08);}
+.name-full{font-size:13px;color:#f1f5f9;font-weight:bold;}
+.name-sub{font-size:10px;color:#475569;margin-top:2px;}
+#m3Done{position:fixed;inset:0;z-index:160;background:rgba(5,10,20,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#m3Done h2{font-size:36px;color:#60a5fa;letter-spacing:0.15em;font-weight:normal;margin-bottom:8px;}
+#m3DoneScore{font-size:50px;font-weight:bold;color:#f1f5f9;margin:8px 0;}
+#m3DoneMsg{font-size:13px;color:#64748b;max-width:340px;line-height:1.65;}
+.done-btn{margin-top:16px;padding:10px 26px;border:1.5px solid #60a5fa;border-radius:7px;background:rgba(96,165,250,0.08);color:#60a5fa;font-size:11px;letter-spacing:0.09em;cursor:pointer;font-family:inherit;transition:all 0.2s;}
+.done-btn:hover{background:rgba(96,165,250,0.18);}
+
+/* MODULE 3 ENZYME CATCHER */
+#catchScreen{position:fixed;inset:0;z-index:120;display:none;flex-direction:column;background:#050a14;}
+#catchTop{position:fixed;top:0;left:0;right:0;z-index:135;background:rgba(5,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:16px;padding:9px 18px;}
+.catchBrand{font-size:11px;letter-spacing:0.16em;color:#34d399;}
+#catchLives{font-size:12px;color:#ef4444;}
+#catchScore{font-size:13px;color:#f1f5f9;font-weight:bold;}
+#catchLevel{font-size:10px;color:#64748b;}
+#catchBack{padding:5px 12px;border:1px solid #1e293b;border-radius:5px;background:transparent;color:#475569;font-size:10px;cursor:pointer;font-family:inherit;margin-left:auto;}
+#catchBack:hover{border-color:#34d399;color:#34d399;}
+#catchCanvas{position:fixed;top:48px;left:0;right:0;bottom:0;z-index:125;display:block;width:100%;height:calc(100vh - 48px);}
+#catchOverlay{position:fixed;inset:0;top:48px;z-index:136;background:rgba(5,10,20,0.94);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#catchOverlay h2{font-size:38px;color:#34d399;letter-spacing:0.15em;font-weight:normal;margin-bottom:10px;}
+.co-score{font-size:54px;font-weight:bold;color:#f1f5f9;margin:8px 0;}
+#catchOverlay p{font-size:12px;color:#64748b;max-width:440px;line-height:1.7;margin-bottom:6px;}
+.catch-btn{margin-top:18px;padding:11px 30px;border:1.5px solid #34d399;border-radius:8px;background:rgba(52,211,153,0.1);color:#34d399;font-size:12px;letter-spacing:0.1em;cursor:pointer;font-family:inherit;transition:all 0.22s;}
+.catch-btn:hover{background:rgba(52,211,153,0.2);}
+.catch-controls{display:flex;gap:32px;margin-top:16px;justify-content:center;}
+.cc{text-align:center;}.cc-label{font-size:9px;color:#475569;letter-spacing:0.1em;margin-bottom:6px;}.cc-enzyme{font-size:24px;margin-bottom:4px;}.cc-keys{font-size:11px;color:#94a3b8;}.cc-type{font-size:10px;margin-top:4px;padding:2px 8px;border-radius:5px;display:inline-block;}
+
+/* MODULE 4 ENZYME BRIDGE */
+#bridgeScreen{position:fixed;inset:0;z-index:115;display:none;flex-direction:column;background:#050a14;}
+#bridgeTop{position:fixed;top:0;left:0;right:0;z-index:130;background:rgba(5,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:14px;padding:9px 16px;}
+.bridgeBrand{font-size:11px;letter-spacing:0.16em;color:#f97316;}
+#bridgeHUD{display:flex;align-items:center;gap:18px;}
+#bridgeLives{font-size:12px;color:#ef4444;}
+#bridgeLvl{font-size:11px;color:#a78bfa;font-weight:bold;}
+#bridgeProgress{font-size:11px;color:#34d399;}
+#bridgeFrozenBar{font-size:11px;color:#60a5fa;display:none;}
+#bridgeBack{padding:5px 12px;border:1px solid #1e293b;border-radius:5px;background:transparent;color:#475569;font-size:10px;cursor:pointer;font-family:inherit;margin-left:auto;}
+#bridgeBack:hover{border-color:#f97316;color:#f97316;}
+#bridgeCanvas{position:fixed;top:48px;left:0;right:0;bottom:0;z-index:125;display:block;width:100%;height:calc(100vh - 48px);}
+#bridgeOverlay{position:fixed;inset:0;top:48px;z-index:136;background:rgba(5,10,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px;}
+#bridgeOverlay h2{font-size:36px;color:#f97316;letter-spacing:0.15em;font-weight:normal;margin-bottom:10px;}
+.bo-sub{font-size:13px;color:#94a3b8;max-width:500px;line-height:1.7;margin-bottom:6px;}
+.bo-tip{font-size:11px;color:#475569;max-width:480px;line-height:1.65;margin-top:8px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.07);}
+.bo-score{font-size:52px;font-weight:bold;color:#f1f5f9;margin:10px 0;}
+.bridge-btn{margin-top:18px;padding:11px 30px;border:1.5px solid #f97316;border-radius:8px;background:rgba(249,115,22,0.1);color:#f97316;font-size:12px;letter-spacing:0.1em;cursor:pointer;font-family:inherit;transition:all 0.22s;}
+.bridge-btn:hover{background:rgba(249,115,22,0.2);}
+
+/* SCIENCE POPUP */
+#sci{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);background:rgba(5,10,20,0.99);border:1px solid rgba(167,139,250,0.35);border-radius:11px;padding:22px 24px;max-width:370px;width:90%;z-index:300;opacity:0;pointer-events:none;transition:all 0.28s;text-align:center;backdrop-filter:blur(14px);}
+#sci.vis{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto;}
+#sci .si{font-size:10px;color:#94a3b8;letter-spacing:0.06em;margin-bottom:2px;}
+#sci .st{font-size:13px;color:#c4b5fd;font-weight:bold;margin-bottom:9px;letter-spacing:0.06em;}
+#sci .sb{font-size:11px;color:#e2e8f0;line-height:1.75;margin-bottom:8px;text-align:left;white-space:pre-line;}
+#sci .ss{font-size:9px;color:#475569;font-style:italic;margin-bottom:12px;}
+#sci button{padding:7px 20px;border:1px solid #a78bfa;border-radius:6px;background:transparent;color:#c4b5fd;font-size:11px;cursor:pointer;font-family:inherit;}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home">
+  <h1>F O L D</h1>
+  <p class="home-sub">Protein Biology · Interactive Learning</p>
+  <div class="home-grid">
+    <div class="home-btn" id="goExplore">
+      <div class="hb-label">MODULE 01</div>
+      <div class="hb-name">Protein Explorer</div>
+      <div class="hb-desc">Orbit 4 real proteins in 3D. Change temperature, pH, salt. Apply mutations. Watch denaturation in real time.</div>
+      <span class="pill pill-purple">4 Proteins</span>
+      <span class="pill pill-blue" style="margin-left:4px">Orbit Controls</span>
+    </div>
+    <div class="home-btn" id="goMatch">
+      <div class="hb-label">MODULE 02</div>
+      <div class="hb-name">3D Amino Acid Match</div>
+      <div class="hb-desc">One 3D structure at a time. Pick the correct name from all 20. Filter by property group. Quick fact on correct answer.</div>
+      <span class="pill pill-green">3D Molecules</span>
+      <span class="pill pill-yellow" style="margin-left:4px">20 Amino Acids</span>
+    </div>
+    <div class="home-btn" id="goCatch">
+      <div class="hb-label">MODULE 03</div>
+      <div class="hb-name">Enzyme Catcher</div>
+      <div class="hb-desc">Two enzymes slide left and right. Amino acids fall from the top. Each enzyme only catches monomers that match its active site shape — lock and key!</div>
+      <span class="pill pill-green">Lock &amp; Key</span>
+      <span class="pill pill-blue" style="margin-left:4px">WASD + Arrows</span>
+    </div>
+    <div class="home-btn" id="goBridge">
+      <div class="hb-label">MODULE 04</div>
+      <div class="hb-name">Enzyme Bridge</div>
+      <div class="hb-desc">Help the molecule cross the gap! Manage temperature, pH, and salt to keep the enzyme stable as a bridge. Too much heat denatures it and the bridge collapses.</div>
+      <span class="pill pill-green">Lock &amp; Key</span>
+      <span class="pill pill-red" style="margin-left:4px">Denaturation</span>
+    </div>
+  </div>
+  <p style="font-size:9px;color:#1e293b;letter-spacing:0.08em;">Built for the Ujima Lab</p>
+</div>
+
+<!-- TOP BAR -->
+<div id="topBar">
+  <div class="tb-brand">FOLD</div>
+  <div><div class="tb-title" id="tbTitle">—</div><div class="tb-sub" id="tbSub">—</div></div>
+  <div id="fpsCnt">— fps</div>
+  <button id="tbBack">Back to Home</button>
+</div>
+
+<!-- MODULE 1: PROTEIN PICKER -->
+<div id="m1Picker">
+  <h2>PROTEIN EXPLORER</h2>
+  <p class="sub">Choose a protein · Drag to rotate · Scroll to zoom</p>
+  <div class="prot-grid">
+    <div class="prot-card" data-level="antibody">
+      <div class="pc-name">IMMUNOGLOBULIN G</div><div class="pc-sub">IgG · Y-shaped antibody · 150 kDa</div>
+      <div class="pc-tags"><span class="pct pct-b">1° Sequence</span><span class="pct pct-r">2° β-Sheet</span><span class="pct pct-y">3° Domain fold</span><span class="pct pct-p">4° Y-tetramer</span></div>
+      <div class="pc-dis d2">⚠️ Autoimmune Disease</div>
+    </div>
+    <div class="prot-card" data-level="insulin">
+      <div class="pc-name">INSULIN</div><div class="pc-sub">Pancreatic hormone · 5.8 kDa</div>
+      <div class="pc-tags"><span class="pct pct-b">1° Sequence</span><span class="pct pct-r">2° α-Helix</span><span class="pct pct-y">3° Disulfide-locked</span></div>
+      <div class="pc-dis d3">⚠️ Diabetes (537M people)</div>
+    </div>
+    <div class="prot-card" data-level="collagen">
+      <div class="pc-name">COLLAGEN</div><div class="pc-sub">Triple helix · 30% of body protein</div>
+      <div class="pc-tags"><span class="pct pct-b">1° Gly-X-Y repeat</span><span class="pct pct-r">2° Poly-Pro helix</span><span class="pct pct-p">3°/4° Triple helix</span></div>
+      <div class="pc-dis d4">⚠️ Scurvy · Brittle Bones</div>
+    </div>
+    <div class="prot-card" data-level="prion">
+      <div class="pc-name">PRION PROTEIN</div><div class="pc-sub">PrPc → PrPsc · conformational disease</div>
+      <div class="pc-tags"><span class="pct pct-b">1° Same sequence</span><span class="pct pct-r">2° α→β conversion</span><span class="pct pct-y">3° Aggregation</span></div>
+      <div class="pc-dis d5">☠️ CJD · Mad Cow · 100% fatal</div>
+    </div>
+  </div>
+  <button id="ppBack">Back to Home</button>
+</div>
+
+<!-- MODULE 1 OVERLAYS -->
+<div id="intBar"><div class="ibl">STRUCTURAL INTEGRITY</div><div class="ibt"><div id="intFill"></div></div><div class="ibs">Status: <span id="intStatus">Fully Folded</span></div></div>
+<div id="structLvls"></div>
+<div id="bodyLoc"><h4>📍 FOUND IN THE BODY</h4><div id="bodyLocTxt">—</div></div>
+<div id="params">
+  <h3>CHANGE CONDITIONS</h3>
+  <div class="pr"><div class="ph">Temperature <span class="pv" id="tV">37°C</span></div><input type="range" class="ps" id="tS" min="0" max="100" value="37"><div class="pe" id="tE">Normal body temperature.</div></div>
+  <div class="pr"><div class="ph">pH <span class="pv" id="pV">7.4</span></div><input type="range" class="ps" id="pS" min="0" max="14" value="7.4" step="0.1"><div class="pe" id="pE">Physiological pH.</div></div>
+  <div class="pr"><div class="ph">Salt (mM) <span class="pv" id="sV">150</span></div><input type="range" class="ps" id="sS" min="0" max="500" value="150"><div class="pe" id="sE">Physiological ionic strength.</div></div>
+  <button id="mutBtn">APPLY MUTATION</button>
+  <div id="mutInfo"></div>
+</div>
+<div id="infoBar">
+  <div id="infoHead" onclick="toggleInfo()"><div class="iht" id="infoTitle">PROTEIN</div><div id="infoTgl">▲ expand</div></div>
+  <div id="infoBod"><div id="infoWhat"></div><div id="infoWhy"></div><div id="infoFacts"></div></div>
+</div>
+<div id="legend">
+  <h4>STRUCTURE COLORS</h4>
+  <div class="lgr"><div class="lgd" style="background:#ef4444"></div>α-Helix</div>
+  <div class="lgr"><div class="lgd" style="background:#60a5fa"></div>β-Sheet</div>
+  <div class="lgr"><div class="lgd" style="background:#fbbf24"></div>Loop/Coil</div>
+  <div class="lgr"><div class="lgd" style="background:#a78bfa"></div>Active Site</div>
+  <div class="lgr"><div class="lgd" style="background:#f97316"></div>Cofactor</div>
+</div>
+
+<!-- MODULE 2: 3D MATCHING -->
+<div id="m3Screen">
+  <div id="m3Top">
+    <div class="m3brand">FOLD · MATCH</div>
+    <button class="m3filt fal" data-f="all">ALL</button>
+    <button class="m3filt" data-f="nonpolar">NONPOLAR</button>
+    <button class="m3filt" data-f="polar">POLAR</button>
+    <button class="m3filt" data-f="acidic">ACIDIC (−)</button>
+    <button class="m3filt" data-f="basic">BASIC (+)</button>
+    <div id="m3Sc">Score: <span id="m3ScV">0</span></div>
+    <div id="m3Tim"><span id="m3TmV">0:00</span></div>
+    <button id="m3Back">Home</button>
+  </div>
+  <div id="m3Body">
+    <div id="m3Left">
+      <div id="m3Progress">— / —</div>
+      <canvas id="m3Canvas"></canvas>
+      <div id="m3PropHint">—</div>
+      <div id="m3Toast">—</div>
+    </div>
+    <div id="m3Right">
+      <div class="col-header">CLICK THE CORRECT NAME</div>
+      <div id="m3NL"></div>
+    </div>
+  </div>
+  <div id="m3Done">
+    <h2>ROUND COMPLETE</h2>
+    <div id="m3DoneScore">—</div>
+    <p id="m3DoneMsg">—</p>
+    <button class="done-btn" id="m3Again">Play Again</button>
+    <button class="done-btn" id="m3DoneHome" style="margin-top:8px;border-color:#334155;color:#475569;background:transparent;">Home</button>
+  </div>
+</div>
+
+<!-- MODULE 3: ENZYME CATCHER -->
+<div id="catchScreen">
+  <div id="catchTop">
+    <div class="catchBrand">FOLD · ENZYME CATCHER</div>
+    <div id="catchLives">❤️❤️❤️</div>
+    <div id="catchScore">Score: 0</div>
+    <div id="catchLevel">Level 1</div>
+    <button id="catchBack">← Home</button>
+  </div>
+  <canvas id="catchCanvas"></canvas>
+  <div id="catchOverlay">
+    <h2>ENZYME CATCHER</h2>
+    <div class="catch-controls">
+      <div class="cc"><div class="cc-label">ENZYME 1</div><div class="cc-enzyme">🔵</div><div class="cc-keys">A ← → D</div><div class="cc-type" style="background:rgba(251,191,36,0.15);color:#fbbf24">Nonpolar active site</div></div>
+      <div class="cc"><div class="cc-label">ENZYME 2</div><div class="cc-enzyme">🟣</div><div class="cc-keys">← Arrow →</div><div class="cc-type" style="background:rgba(96,165,250,0.15);color:#60a5fa">Polar + Charged active site</div></div>
+    </div>
+    <p style="margin-top:18px">Catch <b style="color:#f1f5f9">only amino acids that match your active site</b>. Wrong catch = lose a life. Speed increases with score!</p>
+    <button class="catch-btn" id="catchStart">▶ START GAME</button>
+    <div id="catchFinalScore" style="display:none">
+      <div class="co-score" id="catchFinalPts">—</div>
+      <p id="catchFinalMsg">—</p>
+      <button class="catch-btn" id="catchRestart" style="margin-top:10px">▶ Play Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODULE 4: ENZYME BRIDGE -->
+<div id="bridgeScreen">
+  <div id="bridgeTop">
+    <div class="bridgeBrand">FOLD · ENZYME BRIDGE</div>
+    <div id="bridgeHUD">
+      <div id="bridgeLives">❤️❤️❤️</div>
+      <div id="bridgeLvl">Level 1</div>
+      <div id="bridgeProgress">Bridge: 0 / 0</div>
+      <div id="bridgeFrozenBar">🧊 FROZEN <span id="frozenCount">5</span>s</div>
+    </div>
+    <button id="bridgeBack">← Home</button>
+  </div>
+  <canvas id="bridgeCanvas"></canvas>
+  <div id="bridgeOverlay">
+    <h2>ENZYME BRIDGE</h2>
+    <p class="bo-sub">Move the enzyme left and right to catch falling amino acids and build the bridge. The ball will roll across once it's complete!</p>
+    <p class="bo-tip">
+      ⬅️ ➡️ Arrow keys to move the enzyme<br><br>
+      🔴 <b style="color:#ef4444">Heat blobs</b> fall too — dodge them! Getting hit <b>freezes the enzyme for 5 seconds</b> and the ball keeps moving toward the edge.<br><br>
+      Build the bridge before the ball falls off!
+    </p>
+    <div id="bridgeFinalBlock" style="display:none">
+      <div class="bo-score" id="bridgeFinalScore">—</div>
+      <p id="bridgeFinalMsg">—</p>
+    </div>
+    <button class="bridge-btn" id="bridgeStart">▶ START GAME</button>
+    <button class="bridge-btn" id="bridgeRestart" style="display:none;margin-top:8px">▶ Play Again</button>
+  </div>
+</div>
+
+<!-- SCIENCE POPUP -->
+<div id="sci">
+  <div class="si" id="sciSub">—</div>
+  <div class="st" id="sciTitle">—</div>
+  <div class="sb" id="sciBody">—</div>
+  <div class="ss" id="sciSrc"></div>
+  <button onclick="closeSci()">Got it</button>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module" src="main.js"></script>
+<script>
+// ── AA DATA ──────────────────────────────────────────────────
+const AA={
+  Gly:{name:'Glycine',l:'G',prop:'nonpolar',charge:0,essential:false,fact:'Simplest AA — only H as side chain. Only one small enough for collagen triple helix interior.',food:'Meat, fish, dairy, legumes',bio:'Essential for collagen synthesis. Also a neurotransmitter.'},
+  Ala:{name:'Alanine',l:'A',prop:'nonpolar',charge:0,essential:false,fact:'Most abundant AA in proteins. Methyl side chain is very stable in alpha helices.',food:'Meat, poultry, fish, eggs',bio:'Central to the glucose-alanine cycle linking muscle and liver.'},
+  Val:{name:'Valine',l:'V',prop:'nonpolar',charge:0,essential:true,fact:'Branched-chain AA. Val6→Glu mutation causes sickle cell anemia.',food:'Meat, dairy, soy, mushrooms',bio:'Val6→Glu in hemoglobin beta-chain causes sickle cell disease.'},
+  Leu:{name:'Leucine',l:'L',prop:'nonpolar',charge:0,essential:true,fact:'Most common AA in proteins. Must come from diet.',food:'Meat, nuts, seeds, dairy',bio:'Activates mTOR signaling for muscle protein synthesis.'},
+  Ile:{name:'Isoleucine',l:'I',prop:'nonpolar',charge:0,essential:true,fact:'Isomer of leucine. Buried in hydrophobic protein cores.',food:'Meat, fish, eggs, seeds',bio:'Branched-chain AA critical for hemoglobin function.'},
+  Phe:{name:'Phenylalanine',l:'F',prop:'nonpolar',charge:0,essential:true,fact:'Benzene ring side chain. PKU disease from inability to metabolize it.',food:'Meat, eggs, dairy, soybeans',bio:'Precursor to tyrosine, dopamine, and adrenaline.'},
+  Trp:{name:'Tryptophan',l:'W',prop:'nonpolar',charge:0,essential:true,fact:'Largest standard AA. Single codon (UGG). Precursor to serotonin.',food:'Turkey, eggs, cheese, nuts',bio:'Precursor to serotonin, melatonin, and niacin.'},
+  Met:{name:'Methionine',l:'M',prop:'nonpolar',charge:0,essential:true,fact:'Start codon AA — every protein begins with Met. Contains sulfur.',food:'Meat, fish, eggs, Brazil nuts',bio:'Start codon residue. Donates methyl groups in epigenetic reactions.'},
+  Pro:{name:'Proline',l:'P',prop:'nonpolar',charge:0,essential:false,fact:'Rigid ring creates kinks in helices. Cannot form standard H-bonds.',food:'Meat, dairy, wheat, legumes',bio:'Abundant in collagen (Gly-Pro-Hyp repeats). Creates helix-breaking kinks.'},
+  Ser:{name:'Serine',l:'S',prop:'polar',charge:0,essential:false,fact:'Major phosphorylation site in cell signaling.',food:'Meat, dairy, wheat, peanuts',bio:'Phosphorylated by kinases to switch signaling on and off.'},
+  Thr:{name:'Threonine',l:'T',prop:'polar',charge:0,essential:true,fact:'Also a phosphorylation target. Found in serine protease active sites.',food:'Meat, dairy, lentils, sesame',bio:'Essential AA. Important for gut mucin production.'},
+  Cys:{name:'Cysteine',l:'C',prop:'polar',charge:0,essential:false,fact:'Forms disulfide bonds (S-S) that lock protein structure.',food:'Chicken, eggs, oats, dairy',bio:'Disulfide bonds essential for antibody and insulin stability.'},
+  Tyr:{name:'Tyrosine',l:'Y',prop:'polar',charge:0,essential:false,fact:'Target of tyrosine kinases. Precursor to dopamine.',food:'Chicken, turkey, dairy, oats',bio:'Precursor to dopamine, adrenaline, and thyroid hormones.'},
+  Asn:{name:'Asparagine',l:'N',prop:'polar',charge:0,essential:false,fact:'Glycosylation site — sugars attach here during post-translational modification.',food:'Asparagus, dairy, poultry, eggs',bio:'N-linked glycosylation site. Regulates protein folding and targeting.'},
+  Gln:{name:'Glutamine',l:'Q',prop:'polar',charge:0,essential:false,fact:'Most abundant free AA in blood plasma.',food:'Beef, chicken, fish, dairy',bio:'Primary fuel for intestinal and immune cells. Nitrogen transporter.'},
+  Asp:{name:'Aspartate',l:'D',prop:'acidic',charge:-1,essential:false,fact:'Negatively charged at pH 7. In active sites of many enzymes.',food:'Meat, oysters, avocado, asparagus',bio:'Key in urea cycle, TCA cycle. Neurotransmitter precursor.'},
+  Glu:{name:'Glutamate',l:'E',prop:'acidic',charge:-1,essential:false,fact:'Major excitatory neurotransmitter. Sickle cell anemia mutation site.',food:'Meat, cheese, tomatoes, soy',bio:'Main excitatory neurotransmitter. Central to nitrogen metabolism.'},
+  Lys:{name:'Lysine',l:'K',prop:'basic',charge:1,essential:true,fact:'Positively charged. Histones rich in Lys bind DNA.',food:'Meat, legumes, dairy, quinoa',bio:'Histones rich in Lys bind DNA. Acetylation regulates gene expression.'},
+  Arg:{name:'Arginine',l:'R',prop:'basic',charge:1,essential:false,fact:'Most positively charged AA. DNA binding, enzyme active sites.',food:'Meat, nuts, seeds, dairy',bio:'Precursor to nitric oxide. In enzyme active sites. Urea cycle.'},
+  His:{name:'Histidine',l:'H',prop:'basic',charge:0.5,essential:true,fact:'Near-neutral pKa — switches charge at physiological pH.',food:'Meat, fish, eggs, dairy',bio:'Proton shuttling in enzyme catalysis. In hemoglobin O2 binding.'},
+};
+const PCOL={nonpolar:'#fbbf24',polar:'#60a5fa',acidic:'#ef4444',basic:'#34d399'};
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function show(id){
+  ['home','m1Picker','m3Screen','catchScreen','bridgeScreen'].forEach(s=>{
+    const e=document.getElementById(s);if(e)e.style.display='none';
+  });
+  const t=document.getElementById(id);if(t)t.style.display='flex';
+}
+function showExUI(){
+  ['intBar','structLvls','bodyLoc','params','infoBar','legend'].forEach(id=>{
+    const e=document.getElementById(id);if(e)e.style.display=id==='structLvls'||id==='infoBar'?'none':'block';
+    if(id==='structLvls')e.style.display='flex';
+  });
+  document.getElementById('infoBar').style.display='block';
+}
+function hideExUI(){
+  ['intBar','structLvls','bodyLoc','params','infoBar','legend'].forEach(id=>{
+    const e=document.getElementById(id);if(e)e.style.display='none';
+  });
+}
+
+document.getElementById('goExplore').addEventListener('click',()=>{
+  show('m1Picker');
+  document.getElementById('topBar').style.display='flex';
+  document.getElementById('tbTitle').textContent='PROTEIN EXPLORER';
+  document.getElementById('tbSub').textContent='Drag to rotate · Scroll to zoom · Change conditions';
+  hideExUI();
+  window._setMode&&window._setMode('explore');
+});
+document.getElementById('goMatch').addEventListener('click',()=>{show('m3Screen');startM3();});
+document.getElementById('goCatch').addEventListener('click',()=>{
+  show('catchScreen');
+  document.getElementById('catchOverlay').style.display='flex';
+  document.getElementById('catchFinalScore').style.display='none';
+  document.getElementById('catchStart').style.display='inline-block';
+  document.querySelector('#catchOverlay h2').textContent='ENZYME CATCHER';
+  if(!catchGame)initCatchGame();
+  else{catchGame.running=false;document.getElementById('catchOverlay').style.display='flex';}
+});
+document.getElementById('goBridge').addEventListener('click',()=>{
+  show('bridgeScreen');
+  document.getElementById('bridgeOverlay').style.display='flex';
+  document.getElementById('bridgeFinalBlock').style.display='none';
+  document.getElementById('bridgeStart').style.display='inline-block';
+  document.getElementById('bridgeRestart').style.display='none';
+  document.querySelector('#bridgeOverlay h2').textContent='ENZYME BRIDGE';
+  if(!bridgeGame)initBridgeGame();
+  else{bridgeGame.running=false;document.getElementById('bridgeOverlay').style.display='flex';}
+});
+document.getElementById('tbBack').addEventListener('click',()=>{show('home');document.getElementById('topBar').style.display='none';hideExUI();window._setMode&&window._setMode('idle');stopTimer();});
+document.getElementById('ppBack').addEventListener('click',()=>{show('home');document.getElementById('topBar').style.display='none';hideExUI();window._setMode&&window._setMode('idle');});
+document.getElementById('m3Back').addEventListener('click',()=>{show('home');stopTimer();});
+document.getElementById('catchBack').addEventListener('click',()=>{if(catchGame)catchGame.running=false;show('home');});
+document.getElementById('bridgeBack').addEventListener('click',()=>{if(bridgeGame)bridgeGame.running=false;show('home');});
+
+document.querySelectorAll('.prot-card').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.getElementById('m1Picker').style.display='none';
+    showExUI();
+    window._loadLevel&&window._loadLevel(c.dataset.level);
+  });
+});
+
+// ── MODULE 1 HELPERS ────────────────────────────────────────
+const PCTX={
+  antibody:{title:'IMMUNOGLOBULIN G',what:'Y-shape: 2 heavy + 2 light chains joined by disulfide bonds. Fab arms hold 6 CDR loops that recognize antigens. Fc stem signals immune cells.',why:'Basis of vaccines and 100+ approved cancer drugs. Disulfide bonds are critical — break them and antigen binding fails.',facts:['1,320 AA','4 chains','150 kDa','12 disulfide bonds','100+ approved drugs'],loc:'Blood plasma, lymph nodes, spleen. Crosses the placenta to protect fetuses.',lvls:[{l:'1° Sequence',c:'#60a5fa'},{l:'2° Beta-Sheet domains',c:'#ef4444'},{l:'3° Immunoglobulin fold',c:'#fbbf24'},{l:'4° Y-shaped tetramer',c:'#a78bfa'}],mut:'CDR Loop Disruption',mp:{s:'ANTIBODY',t:'CDR LOOP MUTATION',b:'One amino acid change in a CDR loop can eliminate antigen binding or cause the antibody to attack self-proteins — the molecular basis of autoimmune disease.'}},
+  insulin:{title:'INSULIN',what:'51 amino acid hormone. Two chains (A and B) held by 3 disulfide bonds. Binds the insulin receptor triggering cells to absorb glucose.',why:'537 million people worldwide have diabetes. First protein sequenced (1955). First genetically engineered drug (1982).',facts:['51 AA','2 chains (A+B)','5.8 kDa','3 disulfide bonds'],loc:'Produced in pancreatic beta cells. Stored as zinc hexamers. Released into blood.',lvls:[{l:'1° Sequence',c:'#60a5fa'},{l:'2° Alpha-Helix (B-chain)',c:'#ef4444'},{l:'3° Disulfide-locked fold',c:'#fbbf24'}],mut:'Pro→Leu B28 — Insulin Lispro',mp:{s:'INSULIN',t:'INSULIN LISPRO',b:'Swapping Pro28-Lys29 disrupts hexamer formation. Lispro absorbs 3x faster — acts in 15 min instead of 1-2 hours. Rational drug design.'}},
+  collagen:{title:'COLLAGEN',what:'Triple helix of 3 polypeptide chains. Every third residue must be Glycine. Hydroxyproline crosslinks require Vitamin C.',why:'30% of total body protein. Scurvy is collagen failing without Vitamin C. Over 1,000 mutations cause brittle bones.',facts:['~1,400 AA per chain','Triple helix','~300 kDa','Gly-X-Y repeat','Requires Vitamin C'],loc:'Skin (70% of dry weight), bone, tendons, cartilage, blood vessel walls, cornea.',lvls:[{l:'1° Gly-X-Y repeat',c:'#60a5fa'},{l:'2° Polyproline II helix',c:'#ef4444'},{l:'3°/4° Triple helix',c:'#a78bfa'}],mut:'Gly→Ala — Osteogenesis Imperfecta',mp:{s:'COLLAGEN',t:'BRITTLE BONE DISEASE',b:'Replacing any Glycine — even with Alanine — disrupts the triple helix. Collagen fails, bones fracture easily. This is Osteogenesis Imperfecta.'}},
+  prion:{title:'PRION PROTEIN',what:'Same amino acid sequence, two different shapes. Normal PrPC is alpha-helical and soluble. Misfolded PrPSc is beta-sheet rich, insoluble, and propagates by contact.',why:'1997 Nobel Prize (Prusiner). 100% fatal. No treatment. Also explains Alzheimer\'s and Parkinson\'s misfolding.',facts:['253 AA','1 chain','~35 kDa','Same sequence — 2 folds','100% fatal'],loc:'Neurons throughout the brain. Normal PrPC on neuronal surfaces. PrPSc aggregates destroy brain tissue.',lvls:[{l:'1° Identical sequence',c:'#60a5fa'},{l:'2° α→β conversion',c:'#ef4444'},{l:'3° Amyloid aggregation',c:'#fbbf24'}],mut:'Conformational Change Only',mp:{s:'PRION',t:'NO MUTATION NEEDED',b:'PrPSc is the identical sequence as normal PrPC. The infectious agent is a misfolded protein — no DNA required. Heat cannot destroy it. 100% fatal.'}},
+};
+let infoOpen=false;
+window.toggleInfo=function(){infoOpen=!infoOpen;document.getElementById('infoBod').style.display=infoOpen?'block':'none';document.getElementById('infoTgl').textContent=infoOpen?'▼ collapse':'▲ expand';};
+window.updatePCtx=function(key){
+  const ctx=PCTX[key];if(!ctx)return;
+  document.getElementById('infoTitle').textContent=ctx.title;
+  document.getElementById('infoWhat').textContent=ctx.what;
+  document.getElementById('infoWhy').textContent=ctx.why;
+  document.getElementById('infoFacts').innerHTML=ctx.facts.map(f=>`<span class="ifc">${f}</span>`).join('');
+  document.getElementById('bodyLocTxt').textContent=ctx.loc;
+  document.getElementById('structLvls').innerHTML=ctx.lvls.map(l=>`<div class="slvl" style="color:${l.c};border-color:${l.c};background:${l.c}18">${l.l}</div>`).join('');
+  document.getElementById('mutBtn').textContent=ctx.mut;
+  infoOpen=true;document.getElementById('infoBod').style.display='block';document.getElementById('infoTgl').textContent='▼ collapse';
+};
+document.getElementById('tS').addEventListener('input',function(){const t=+this.value;document.getElementById('tV').textContent=t+'°C';document.getElementById('tE').textContent=t<42?'Normal range.':t<65?'⚠️ Stressing.':t<80?'⛔ Denaturing!':'☠️ Complete denaturation.';window._applyP&&window._applyP(t,+document.getElementById('pS').value,+document.getElementById('sS').value);});
+document.getElementById('pS').addEventListener('input',function(){const p=+this.value;document.getElementById('pV').textContent=p.toFixed(1);document.getElementById('pE').textContent=p<5?'Acidic.':p<8?'Physiological.':'Basic.';window._applyP&&window._applyP(+document.getElementById('tS').value,p,+document.getElementById('sS').value);});
+document.getElementById('sS').addEventListener('input',function(){const s=+this.value;document.getElementById('sV').textContent=s;document.getElementById('sE').textContent=s<50?'Hypotonic.':s<250?'Physiological.':'⚠️ High salt.';window._applyP&&window._applyP(+document.getElementById('tS').value,+document.getElementById('pS').value,s);});
+document.getElementById('mutBtn').addEventListener('click',function(){window._applyM&&window._applyM(this);});
+
+// ── MODULE 2: MATCHING GAME ──────────────────────────────────
+let m3={filter:'all',score:0,queue:[],idx:0,wrongs:0,timer:null,elapsed:0};
+let m3R=null,m3Sc=null,m3Cam=null,m3Mol=null,m3Ani=null;
+const miniRenderers={};
+
+function getPool(){const all=Object.keys(AA);if(m3.filter==='all')return all;const f=all.filter(k=>AA[k].prop===m3.filter);return f.length>=3?f:all;}
+
+function startM3(){
+  stopTimer();if(m3Ani){cancelAnimationFrame(m3Ani);m3Ani=null;}
+  const pool=[...getPool()].sort(()=>Math.random()-.5);
+  m3={...m3,score:0,queue:pool,idx:0,wrongs:0,elapsed:0};
+  document.getElementById('m3ScV').textContent='0';document.getElementById('m3Done').style.display='none';startTimer();showCurrentAA();
+}
+
+function showCurrentAA(){
+  if(m3.idx>=m3.queue.length){endRound();return;}
+  const aa=m3.queue[m3.idx],d=AA[aa],col=PCOL[d.prop];
+  document.getElementById('m3Progress').textContent=(m3.idx+1)+' / '+m3.queue.length;
+  const ph=document.getElementById('m3PropHint');
+  ph.textContent=d.prop.toUpperCase()+(d.prop==='acidic'?' (−)':d.prop==='basic'?' (+)':'');
+  ph.style.color=col;ph.style.borderColor=col;ph.style.background=col+'18';
+  const cvs=document.getElementById('m3Canvas');
+  cvs.width=300;cvs.height=300;
+  if(!m3R){
+    m3R=new THREE.WebGLRenderer({canvas:cvs,antialias:true});
+    m3R.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    m3Sc=new THREE.Scene();m3Sc.background=new THREE.Color(0x020810);
+    m3Cam=new THREE.PerspectiveCamera(38,1,0.1,50);m3Cam.position.set(0,1.5,7);m3Cam.lookAt(0,1,0);
+    m3Sc.add(new THREE.AmbientLight(0x334466,0.9));
+    const kl=new THREE.DirectionalLight(0xffffff,1.3);kl.position.set(4,7,5);m3Sc.add(kl);
+    const fl=new THREE.DirectionalLight(0x4466ff,0.4);fl.position.set(-3,-2,3);m3Sc.add(fl);
+  }
+  m3R.setSize(300,300);
+  if(m3Mol){m3Sc.remove(m3Mol);m3Mol=null;}
+  if(m3Ani){cancelAnimationFrame(m3Ani);m3Ani=null;}
+  m3Mol=buildMiniMolecule(aa);
+  m3Mol.rotation.x=0.25;m3Mol.rotation.y=0.3;
+  m3Sc.add(m3Mol);
+  m3R.render(m3Sc,m3Cam);
+  const nl=document.getElementById('m3NL');nl.innerHTML='';
+  Object.keys(AA).sort((a,b)=>AA[a].name.localeCompare(AA[b].name)).forEach(key=>{
+    const nd=AA[key],ncol=PCOL[nd.prop];
+    const card=document.createElement('div');card.className='name-card';card.id='nc-'+key;
+    card.innerHTML=`<div class="name-full">${nd.name}</div><div class="name-sub">${key} &middot; ${nd.l} &middot; <span style="color:${ncol}">${nd.prop}</span></div>`;
+    card.addEventListener('click',()=>guessName(key,aa));
+    nl.appendChild(card);
+  });
+}
+
+function guessName(guess,correct){
+  if(guess===correct){
+    const card=document.getElementById('nc-'+guess);if(card)card.classList.add('ok-flash');
+    m3.score+=10;document.getElementById('m3ScV').textContent=m3.score;
+    const toast=document.getElementById('m3Toast');
+    toast.textContent='✓ '+AA[correct].name+' — '+AA[correct].fact;
+    toast.classList.add('show');
+    setTimeout(()=>{toast.classList.remove('show');m3.idx++;showCurrentAA();},1400);
+  } else {
+    m3.wrongs++;const card=document.getElementById('nc-'+guess);
+    if(card){card.classList.add('bad');setTimeout(()=>card.classList.remove('bad'),700);}
+  }
+}
+
+function endRound(){
+  stopTimer();document.getElementById('m3Done').style.display='flex';
+  const total=m3.queue.length,acc=Math.round(total/(total+m3.wrongs)*100);
+  document.getElementById('m3DoneScore').textContent=m3.score+' pts';
+  document.getElementById('m3DoneMsg').textContent=total+' amino acids · '+acc+'% accuracy · '+m3.wrongs+' wrong · '+Math.floor(m3.elapsed/60)+'m '+m3.elapsed%60+'s';
+}
+document.getElementById('m3Again').addEventListener('click',startM3);
+document.getElementById('m3DoneHome').addEventListener('click',()=>{show('home');stopTimer();});
+const FCLS={all:'fal',nonpolar:'fnp',polar:'fpo',acidic:'fac',basic:'fba'};
+document.querySelectorAll('.m3filt').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.m3filt').forEach(x=>Object.values(FCLS).forEach(c=>x.classList.remove(c)));m3.filter=b.dataset.f;b.classList.add(FCLS[b.dataset.f]||'fal');startM3();});});
+function startTimer(){m3.elapsed=0;m3.timer=setInterval(()=>{m3.elapsed++;const mm=Math.floor(m3.elapsed/60),ss=m3.elapsed%60;document.getElementById('m3TmV').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);}
+function stopTimer(){if(m3.timer){clearInterval(m3.timer);m3.timer=null;}}
+
+// ── MINI MOLECULE BUILDER (for matching) ────────────────────
+function buildMiniMolecule(aa){
+  const g=new THREE.Group();const col=PCOL[AA[aa].prop]||'#94a3b8';const c3=new THREE.Color(col);
+  const backMat=new THREE.MeshStandardMaterial({color:0xd4d4d4,roughness:0.5,metalness:0.1});
+  const nAtom=new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10),new THREE.MeshStandardMaterial({color:0x4488ff,roughness:0.4}));
+  const caAtom=new THREE.Mesh(new THREE.SphereGeometry(0.32,10,10),backMat);
+  const cAtom=new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10),backMat);
+  const oAtom=new THREE.Mesh(new THREE.SphereGeometry(0.25,10,10),new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.4}));
+  nAtom.position.set(-0.9,0,0);caAtom.position.set(0,0,0);cAtom.position.set(0.9,0,0);oAtom.position.set(1.2,0.6,0);
+  g.add(nAtom,caAtom,cAtom,oAtom);
+  const bondMat=new THREE.MeshStandardMaterial({color:0x555555,roughness:0.7});
+  const mkBond=(a,b)=>{const d=a.distanceTo(b),mid=a.clone().add(b).multiplyScalar(.5);const m=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,d,6),bondMat);m.position.copy(mid);m.lookAt(b);m.rotateX(Math.PI/2);return m;};
+  g.add(mkBond(nAtom.position,caAtom.position),mkBond(caAtom.position,cAtom.position),mkBond(cAtom.position,oAtom.position));
+  const smat=new THREE.MeshStandardMaterial({color:c3,emissive:c3,emissiveIntensity:0.25,roughness:0.35,metalness:0.1});
+  const smatS=new THREE.MeshStandardMaterial({color:0xfde68a,emissive:new THREE.Color(0xfde68a),emissiveIntensity:0.3,roughness:0.4});
+  const smatN=new THREE.MeshStandardMaterial({color:0x4488ff,roughness:0.4});
+  const smatO=new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.4});
+  const scRoot=new THREE.Group();scRoot.position.set(0,0,0);g.add(scRoot);
+  const SIDE={
+    Gly:()=>{scRoot.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(.15,8,8),backMat),{position:new THREE.Vector3(0,.35,0)}));},
+    Ala:()=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.32,10,10),smat);m.position.set(0,.7,0);scRoot.add(m);},
+    Val:()=>{const c=new THREE.Mesh(new THREE.SphereGeometry(.28,8,8),smat);c.position.set(0,.7,0);scRoot.add(c);const l=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);l.position.set(-.45,1.15,0);scRoot.add(l);const r=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);r.position.set(.45,1.15,0);scRoot.add(r);},
+    Leu:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat);cb.position.set(0,.7,0);scRoot.add(cb);const cg=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);cg.position.set(-.2,1.2,0);scRoot.add(cg);const d1=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);d1.position.set(-.55,1.65,0);scRoot.add(d1);const d2=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);d2.position.set(.2,1.65,0);scRoot.add(d2);},
+    Ile:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat);cb.position.set(0,.7,0);scRoot.add(cb);const cg1=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg1.position.set(.4,1.15,0);scRoot.add(cg1);const cg2=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg2.position.set(-.35,1.2,.2);scRoot.add(cg2);const cd=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat);cd.position.set(-.55,1.65,.2);scRoot.add(cd);},
+    Phe:()=>{const stem=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);stem.position.set(0,.65,0);scRoot.add(stem);for(let i=0;i<6;i++){const a=i/6*Math.PI*2;const rm=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);rm.position.set(Math.cos(a)*.5,1.25+Math.sin(a)*.5,0);scRoot.add(rm);}},
+    Trp:()=>{const stem=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);stem.position.set(0,.65,0);scRoot.add(stem);for(let i=0;i<5;i++){const a=i/5*Math.PI*2;const rm=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat);rm.position.set(Math.cos(a)*.42,1.2+Math.sin(a)*.42,0);scRoot.add(rm);}for(let i=0;i<6;i++){const a=i/6*Math.PI*2+.4;const rm=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat);rm.position.set(.55+Math.cos(a)*.42,1.1+Math.sin(a)*.42,0);scRoot.add(rm);}const nind=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smatN);nind.position.set(.28,1.6,0);scRoot.add(nind);},
+    Met:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);cb.position.set(0,.65,0);scRoot.add(cb);const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg.position.set(0,1.1,0);scRoot.add(cg);const s=new THREE.Mesh(new THREE.SphereGeometry(.3,10,10),smatS);s.position.set(0,1.6,0);scRoot.add(s);const ce=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);ce.position.set(.4,2.0,0);scRoot.add(ce);},
+    Pro:()=>{for(let i=0;i<5;i++){const a=i/5*Math.PI*2;const rm=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);rm.position.set(Math.cos(a)*.5,0.9+Math.sin(a)*.45,0);scRoot.add(rm);}},
+    Ser:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat);cb.position.set(0,.68,0);scRoot.add(cb);const oh=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO);oh.position.set(0,1.15,0);scRoot.add(oh);},
+    Thr:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat);cb.position.set(0,.68,0);scRoot.add(cb);const oh=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO);oh.position.set(-.4,1.1,0);scRoot.add(oh);const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg.position.set(.4,1.1,0);scRoot.add(cg);},
+    Cys:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.26,8,8),smat);cb.position.set(0,.68,0);scRoot.add(cb);const sh=new THREE.Mesh(new THREE.SphereGeometry(.3,10,10),smatS);sh.position.set(0,1.2,0);scRoot.add(sh);},
+    Tyr:()=>{const stem=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);stem.position.set(0,.55,0);scRoot.add(stem);const cb2=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat);cb2.position.set(0,.95,0);scRoot.add(cb2);for(let i=0;i<6;i++){const a=i/6*Math.PI*2;const rm=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat);rm.position.set(Math.cos(a)*.42,1.45+Math.sin(a)*.42,0);scRoot.add(rm);}const oh=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatO);oh.position.set(0,1.9,0);scRoot.add(oh);},
+    Asn:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);cb.position.set(0,.68,0);scRoot.add(cb);const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg.position.set(0,1.15,0);scRoot.add(cg);const od=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatO);od.position.set(-.38,1.5,0);scRoot.add(od);const nd=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN);nd.position.set(.38,1.5,0);scRoot.add(nd);},
+    Gln:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);cb.position.set(0,.6,0);scRoot.add(cb);const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg.position.set(0,1.05,0);scRoot.add(cg);const cd=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cd.position.set(0,1.5,0);scRoot.add(cd);const oe=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatO);oe.position.set(-.38,1.85,0);scRoot.add(oe);const ne=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN);ne.position.set(.38,1.85,0);scRoot.add(ne);},
+    Asp:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);cb.position.set(0,.68,0);scRoot.add(cb);const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg.position.set(0,1.15,0);scRoot.add(cg);const od1=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO);od1.position.set(-.42,1.55,0);scRoot.add(od1);const od2=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO);od2.position.set(.42,1.55,0);scRoot.add(od2);},
+    Glu:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);cb.position.set(0,.6,0);scRoot.add(cb);const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg.position.set(0,1.05,0);scRoot.add(cg);const cd=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cd.position.set(0,1.5,0);scRoot.add(cd);const oe1=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO);oe1.position.set(-.42,1.9,0);scRoot.add(oe1);const oe2=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smatO);oe2.position.set(.42,1.9,0);scRoot.add(oe2);},
+    Lys:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);cb.position.set(0,.6,0);scRoot.add(cb);const cg=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cg.position.set(0,1.0,0);scRoot.add(cg);const cd=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cd.position.set(0,1.4,0);scRoot.add(cd);const ce=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);ce.position.set(0,1.8,0);scRoot.add(ce);const nz=new THREE.Mesh(new THREE.SphereGeometry(.26,10,10),smatN);nz.position.set(0,2.2,0);scRoot.add(nz);},
+    Arg:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smat);cb.position.set(0,.58,0);scRoot.add(cb);const cg=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat);cg.position.set(0,.96,0);scRoot.add(cg);const cd=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat);cd.position.set(0,1.34,0);scRoot.add(cd);const ne=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN);ne.position.set(0,1.7,0);scRoot.add(ne);const cz=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),smat);cz.position.set(0,2.05,0);scRoot.add(cz);const nh1=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN);nh1.position.set(-.42,2.4,0);scRoot.add(nh1);const nh2=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),smatN);nh2.position.set(.42,2.4,0);scRoot.add(nh2);},
+    His:()=>{const cb=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),smat);cb.position.set(0,.65,0);scRoot.add(cb);const pts=[new THREE.Vector3(0,1.1,0),new THREE.Vector3(-.38,1.5,0),new THREE.Vector3(-.22,1.95,0),new THREE.Vector3(.22,1.95,0),new THREE.Vector3(.38,1.5,0)];pts.forEach((p,i)=>{const rm=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),i===1||i===3?smatN:smat);rm.position.copy(p);scRoot.add(rm);});},
+  };
+  if(SIDE[aa])SIDE[aa]();
+  return g;
+}
+
+// ── MODULE 3: ENZYME CATCHER ─────────────────────────────────
+const SITE_NP='nonpolar',SITE_PO='polar';
+const E1C=new Set(['nonpolar']),E2C=new Set(['polar','acidic','basic']);
+const CATCH_AAS=Object.entries(AA).map(([key,d])=>({key,name:d.name,prop:d.prop,site:E1C.has(d.prop)?SITE_NP:SITE_PO}));
+let catchGame=null;
+
+function initCatchGame(){
+  const canvas=document.getElementById('catchCanvas'),ctx=canvas.getContext('2d');
+  function resize(){canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight;}
+  resize();window.addEventListener('resize',resize);
+  const state={running:false,score:0,lives:3,level:1,monomers:[],enzymes:[
+    {x:0,y:0,w:120,h:65,speed:4,color:'#3b82f6',glow:'#60a5fa',site:SITE_NP,label:'Nonpolar'},
+    {x:0,y:0,w:120,h:65,speed:4,color:'#7c3aed',glow:'#a78bfa',site:SITE_PO,label:'Polar+Charged'},
+  ],spawnTimer:0,spawnInterval:280,fallSpeed:0.18,frameCount:0,flashMsg:null,flashTimer:0,animId:null};
+  catchGame=state;
+  function resetEnzymes(){const W=canvas.width,H=canvas.height;state.enzymes[0].x=W*0.25-state.enzymes[0].w/2;state.enzymes[1].x=W*0.75-state.enzymes[1].w/2;state.enzymes[0].y=state.enzymes[1].y=H-85;}
+  resetEnzymes();
+  const keys={};
+  document.addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();});
+  document.addEventListener('keyup',e=>{keys[e.code]=false;});
+  function spawnMonomer(){const W=canvas.width;const aa=CATCH_AAS[Math.floor(Math.random()*CATCH_AAS.length)];state.monomers.push({x:40+Math.random()*(W-80),y:-30,r:22,speed:state.fallSpeed+Math.random()*0.2,aa,flash:0,flashColor:'',done:false});}
+  function flash(msg,color){state.flashMsg=msg;state.flashColor=color;state.flashTimer=70;}
+  const SPEED_MILESTONES=[
+    {pts:0,   fall:0.18,spawn:280,enz:3},
+    {pts:50,  fall:0.28,spawn:240,enz:3},
+    {pts:150, fall:0.42,spawn:210,enz:4},
+    {pts:300, fall:0.60,spawn:185,enz:4},
+    {pts:500, fall:0.80,spawn:160,enz:5},
+    {pts:1000,fall:1.10,spawn:130,enz:5},
+    {pts:2000,fall:1.50,spawn:100,enz:6},
+    {pts:3500,fall:2.20,spawn:75, enz:7},
+    {pts:5000,fall:3.00,spawn:55, enz:8},
+  ];
+  function getSpeedCfg(score){let c=SPEED_MILESTONES[0];for(const m of SPEED_MILESTONES){if(score>=m.pts)c=m;else break;}return c;}
+  function drawEnzyme(e,ctx){
+    const x=e.x,y=e.y,w=e.w,h=e.h;
+    ctx.save();ctx.shadowColor=e.glow;ctx.shadowBlur=20;
+    ctx.beginPath();ctx.moveTo(x+w*.15,y+4);ctx.quadraticCurveTo(x+w*.5,y-16,x+w*.85,y+4);ctx.quadraticCurveTo(x+w+10,y+h*.3,x+w,y+h*.65);ctx.quadraticCurveTo(x+w*.85,y+h+4,x+w*.5,y+h+4);ctx.quadraticCurveTo(x+w*.15,y+h+4,x,y+h*.65);ctx.quadraticCurveTo(x-10,y+h*.3,x+w*.15,y+4);ctx.closePath();
+    const grd=ctx.createLinearGradient(x,y,x,y+h);grd.addColorStop(0,e.color+'dd');grd.addColorStop(1,e.color+'77');ctx.fillStyle=grd;ctx.fill();ctx.strokeStyle=e.glow;ctx.lineWidth=2.5;ctx.stroke();ctx.restore();
+    ctx.save();ctx.shadowColor=e.glow;ctx.shadowBlur=10;ctx.strokeStyle='rgba(255,255,255,0.85)';ctx.lineWidth=3;
+    const cx=x+w/2,ny=y+6;
+    if(e.site===SITE_NP){ctx.beginPath();ctx.arc(cx,ny+14,16,Math.PI,0,true);ctx.stroke();ctx.beginPath();ctx.arc(cx,ny+14,7,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1.5;ctx.stroke();}
+    else{ctx.beginPath();ctx.moveTo(cx-18,ny);ctx.lineTo(cx,ny+22);ctx.lineTo(cx+18,ny);ctx.stroke();ctx.beginPath();ctx.moveTo(cx-8,ny+6);ctx.lineTo(cx,ny+18);ctx.lineTo(cx+8,ny+6);ctx.closePath();ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1.5;ctx.stroke();}
+    ctx.restore();
+    ctx.save();ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='bold 11px Courier New';ctx.textAlign='center';ctx.fillText(e.label,x+w/2,y+h*.62);ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='9px Courier New';ctx.fillText(e.site===SITE_NP?'A / D':'← →',x+w/2,y+h*.82);ctx.restore();
+  }
+  function drawMonomer(m,ctx){
+    const aa=m.aa,col={nonpolar:'#fbbf24',polar:'#60a5fa',acidic:'#ef4444',basic:'#34d399'}[aa.prop]||'#94a3b8';
+    ctx.save();if(m.flash>0){ctx.shadowColor=m.flashColor;ctx.shadowBlur=28;}
+    if(aa.site===SITE_NP){ctx.beginPath();ctx.arc(m.x,m.y,m.r,0,Math.PI*2);const grd=ctx.createRadialGradient(m.x-5,m.y-5,2,m.x,m.y,m.r);grd.addColorStop(0,col+'ff');grd.addColorStop(1,col+'88');ctx.fillStyle=m.flash>0?(m.flashColor+'ee'):grd;ctx.fill();ctx.strokeStyle=m.flash>0?m.flashColor:col;ctx.lineWidth=2;ctx.stroke();}
+    else{const r=m.r+2;ctx.beginPath();ctx.moveTo(m.x,m.y-r);ctx.lineTo(m.x+r*.9,m.y+r*.6);ctx.lineTo(m.x-r*.9,m.y+r*.6);ctx.closePath();const grd=ctx.createLinearGradient(m.x,m.y-r,m.x,m.y+r);grd.addColorStop(0,col+'ff');grd.addColorStop(1,col+'88');ctx.fillStyle=m.flash>0?(m.flashColor+'ee'):grd;ctx.fill();ctx.strokeStyle=m.flash>0?m.flashColor:col;ctx.lineWidth=2;ctx.stroke();}
+    ctx.fillStyle='rgba(5,10,20,0.85)';ctx.font='bold 10px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(aa.key,m.x,m.y+1);ctx.textBaseline='alphabetic';ctx.restore();
+  }
+  function updateHUD(){document.getElementById('catchLives').textContent='❤️'.repeat(Math.max(0,state.lives));document.getElementById('catchScore').textContent='Score: '+state.score;document.getElementById('catchLevel').textContent='Level '+state.level;}
+  function checkCol(m,e){return m.x>e.x&&m.x<e.x+e.w&&m.y>e.y&&m.y<e.y+e.h;}
+  function gameLoop(){
+    state.animId=requestAnimationFrame(gameLoop);if(!state.running)return;
+    const W=canvas.width,H=canvas.height;ctx.clearRect(0,0,W,H);
+    const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#020c1b');bg.addColorStop(1,'#050a14');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.setLineDash([8,12]);ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,H-76);ctx.lineTo(W,H-76);ctx.stroke();
+    state.frameCount++;
+    const e0=state.enzymes[0],e1=state.enzymes[1];
+    if(keys['KeyA'])e0.x=Math.max(0,e0.x-e0.speed);
+    if(keys['KeyD'])e0.x=Math.min(W-e0.w,e0.x+e0.speed);
+    if(keys['ArrowLeft'])e1.x=Math.max(0,e1.x-e1.speed);
+    if(keys['ArrowRight'])e1.x=Math.min(W-e1.w,e1.x+e1.speed);
+    state.spawnTimer++;if(state.spawnTimer>=state.spawnInterval){state.spawnTimer=0;spawnMonomer();if(Math.random()<0.25)spawnMonomer();}
+    state.monomers=state.monomers.filter(m=>{
+      if(m.done)return false;m.y+=m.speed;if(m.flash>0)m.flash--;
+      for(const enz of state.enzymes){if(checkCol(m,enz)){if(m.aa.site===enz.site){state.score+=10+state.level*3;m.flash=18;m.flashColor='#4ade80';m.done=true;flash('+'+( 10+state.level*3)+' '+m.aa.name,'#4ade80');updateHUD();}else{state.lives--;m.flash=18;m.flashColor='#ef4444';m.done=true;flash('✗ Wrong! '+m.aa.name+' is '+m.aa.prop,'#ef4444');updateHUD();if(state.lives<=0){endCatch();return false;}}return false;}}
+      if(m.y>H+40){m.done=true;return false;}drawMonomer(m,ctx);return true;
+    });
+    state.enzymes.forEach(e=>drawEnzyme(e,ctx));
+    if(state.flashTimer>0){state.flashTimer--;ctx.save();ctx.globalAlpha=Math.min(1,state.flashTimer/20);ctx.fillStyle=state.flashColor||'#f1f5f9';ctx.font='bold 18px Courier New';ctx.textAlign='center';ctx.shadowColor=state.flashColor||'#fff';ctx.shadowBlur=12;ctx.fillText(state.flashMsg,W/2,H/2-40);ctx.restore();}
+    const cfg=getSpeedCfg(state.score);state.fallSpeed=cfg.fall;state.spawnInterval=cfg.spawn;state.enzymes.forEach(e=>e.speed=cfg.enz);
+    const newLvl=SPEED_MILESTONES.findIndex(m=>state.score<m.pts);const lvl=newLvl===-1?SPEED_MILESTONES.length:Math.max(1,newLvl);
+    if(lvl!==state.level){state.level=lvl;flash('LEVEL '+state.level+' — faster!','#a78bfa');updateHUD();}
+  }
+  function startCatch(){state.running=true;state.score=0;state.lives=3;state.level=1;state.monomers=[];state.frameCount=0;state.spawnTimer=0;state.spawnInterval=280;state.fallSpeed=0.18;state.flashMsg=null;state.flashTimer=0;state.enzymes.forEach(e=>e.speed=3);resetEnzymes();updateHUD();document.getElementById('catchOverlay').style.display='none';if(!state.animId)gameLoop();}
+  function endCatch(){state.running=false;const ov=document.getElementById('catchOverlay');ov.style.display='flex';document.getElementById('catchFinalScore').style.display='block';document.getElementById('catchStart').style.display='none';document.querySelector('#catchOverlay h2').textContent='GAME OVER';document.getElementById('catchFinalPts').textContent=state.score+' pts';document.getElementById('catchFinalMsg').textContent=state.score>=500?'Outstanding! You know your lock-and-key specificity.':state.score>=200?'Great work! Review which AAs are nonpolar vs polar.':'Keep practicing — round = nonpolar (circle), triangle = polar/charged.';}
+  document.getElementById('catchStart').addEventListener('click',startCatch);
+  document.getElementById('catchRestart').addEventListener('click',startCatch);
+  gameLoop();
+}
+
+// ── MODULE 4: ENZYME BRIDGE GAME ─────────────────────────────
+// ── ENZYME BRIDGE GAME ────────────────────────────────────────
+let bridgeGame=null;
+
+function initBridgeGame(){
+  const canvas=document.getElementById('bridgeCanvas');
+  const ctx=canvas.getContext('2d');
+  function resize(){canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight;}
+  resize();
+  window.addEventListener('resize',resize);
+
+  // Key state
+  const keys={};
+  document.addEventListener('keydown',e=>{
+    keys[e.code]=true;
+    if(['ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  });
+  document.addEventListener('keyup',e=>keys[e.code]=false);
+
+  const BRIDGE_SLOTS_NEEDED = 8; // AA pieces needed to complete bridge
+
+  const state={
+    running:false,
+    lives:3, level:1, score:0,
+    // Enzyme (catcher at bottom)
+    enz:{x:0,y:0,w:100,h:52,speed:5,frozen:0}, // frozen = frames remaining
+    // Bridge being built — each caught AA = one segment placed
+    bridgeSlots:[], // x positions of placed segments, left to right
+    bridgeY:0,
+    bridgeComplete:false,
+    // Ball on right platform — rolls left once bridge done, or falls if timer runs out
+    ball:{x:0,y:0,r:14,vy:0,vx:0,state:'waiting'}, // waiting|rolling|falling|won|lost
+    ballTimer:0, // countdown frames before ball falls off edge
+    ballTimerMax:0,
+    // Falling objects
+    drops:[],
+    spawnTimer:0,
+    spawnInterval:90,
+    frameCount:0,
+    flashMsg:'',flashColor:'',flashTimer:0,
+    animId:null,
+  };
+  bridgeGame=state;
+
+  function setupLevel(lvl){
+    const W=canvas.width, H=canvas.height;
+    const groundY=H-90;
+    state.bridgeY=groundY-30;
+
+    // Left platform (enzyme side) and right platform (ball side)
+    const gapStart=Math.round(W*0.30)+lvl*15;
+    const gapEnd  =Math.round(W*0.72)-lvl*10;
+    state.gapStart=gapStart; state.gapEnd=gapEnd;
+
+    // Enzyme starts on left platform
+    state.enz.x=gapStart/2-state.enz.w/2;
+    state.enz.y=groundY-state.enz.h;
+    state.enz.frozen=0;
+    state.enz.speed=4+lvl*0.5;
+
+    // Bridge slots spread evenly across the gap
+    const slotsNeeded=BRIDGE_SLOTS_NEEDED+lvl*1;
+    state.slotsNeeded=slotsNeeded;
+    state.bridgeSlots=[];
+    state.slotPositions=[];
+    for(let i=0;i<slotsNeeded;i++){
+      state.slotPositions.push(gapStart+Math.round((i+0.5)*(gapEnd-gapStart)/slotsNeeded));
+    }
+    state.bridgeComplete=false;
+
+    // Ball on right platform, near the edge of the gap
+    state.ball={x:gapEnd+30,y:groundY-14,r:14,vy:0,vx:0,state:'waiting'};
+    // Timer: ball waits before starting to edge toward fall
+    state.ballTimerMax=Math.max(300,500-lvl*30);
+    state.ballTimer=state.ballTimerMax;
+
+    state.drops=[];
+    state.spawnTimer=0;
+    state.spawnInterval=Math.max(50,90-lvl*8);
+    state.frameCount=0;
+    state.flashTimer=0;
+    state.bridgeDanger=false;
+
+    updateBridgeHUD();
+  }
+
+  function updateBridgeHUD(){
+    document.getElementById('bridgeLives').textContent='❤️'.repeat(Math.max(0,state.lives));
+    document.getElementById('bridgeLvl').textContent='Level '+state.level;
+    document.getElementById('bridgeProgress').textContent=
+      'Bridge: '+state.bridgeSlots.length+' / '+state.slotsNeeded;
+    const fb=document.getElementById('bridgeFrozenBar');
+    if(state.enz.frozen>0){
+      fb.style.display='block';
+      document.getElementById('frozenCount').textContent=Math.ceil(state.enz.frozen/60);
+    } else fb.style.display='none';
+  }
+
+  function flash(msg,col){state.flashMsg=msg;state.flashColor=col||'#f1f5f9';state.flashTimer=90;}
+
+  function spawnDrop(){
+    const W=canvas.width;
+    const isHeat=Math.random()<(0.25+state.level*0.04); // heat chance grows with level
+    const x=30+Math.random()*(W-60);
+    const speed=1.0+state.level*0.25+Math.random()*0.5;
+    state.drops.push({x,y:-20,r:isHeat?16:14,speed,isHeat,aa:isHeat?null:CATCH_AAS[Math.floor(Math.random()*CATCH_AAS.length)],flash:0,flashCol:'',done:false});
+  }
+
+  // Draw enzyme as a blob that opens upward (cup shape to catch AAs)
+  function drawEnzyme(){
+    const e=state.enz;
+    const cx=e.x+e.w/2, cy=e.y+e.h/2;
+    const frozen=e.frozen>0;
+    const col=frozen?'#60a5fa':'#34d399';
+    const glow=frozen?'#93c5fd':'#6ee7b7';
+
+    ctx.save();
+    ctx.shadowColor=glow; ctx.shadowBlur=18;
+
+    // Body — U-shape enzyme (open top to catch incoming AAs)
+    ctx.beginPath();
+    ctx.moveTo(e.x+8, e.y);                          // top-left of opening
+    ctx.quadraticCurveTo(e.x, e.y, e.x, e.y+20);    // left arm curve
+    ctx.quadraticCurveTo(e.x-4, e.y+e.h, cx, e.y+e.h+6); // left to bottom
+    ctx.quadraticCurveTo(e.x+e.w+4, e.y+e.h, e.x+e.w, e.y+20); // bottom to right
+    ctx.quadraticCurveTo(e.x+e.w, e.y, e.x+e.w-8, e.y); // right arm top
+    const gr=ctx.createLinearGradient(e.x,e.y,e.x,e.y+e.h);
+    gr.addColorStop(0,col+'aa'); gr.addColorStop(1,col+'55');
+    ctx.fillStyle=gr; ctx.fill();
+    ctx.strokeStyle=glow; ctx.lineWidth=2.5; ctx.stroke();
+    ctx.restore();
+
+    // Frozen ice overlay
+    if(frozen){
+      ctx.save();
+      ctx.globalAlpha=0.35+Math.sin(state.frameCount*0.2)*0.1;
+      ctx.fillStyle='#93c5fd';
+      ctx.beginPath();
+      ctx.moveTo(e.x+8,e.y);ctx.quadraticCurveTo(e.x,e.y,e.x,e.y+20);ctx.quadraticCurveTo(e.x-4,e.y+e.h,cx,e.y+e.h+6);ctx.quadraticCurveTo(e.x+e.w+4,e.y+e.h,e.x+e.w,e.y+20);ctx.quadraticCurveTo(e.x+e.w,e.y,e.x+e.w-8,e.y);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle='#fff';ctx.font='bold 12px Courier New';ctx.textAlign='center';
+      ctx.fillText('🧊 FROZEN '+Math.ceil(frozen/60||state.enz.frozen/60)+'s',cx,e.y-8);
+    }
+
+    // Enzyme label
+    ctx.fillStyle=frozen?'#bfdbfe':'rgba(255,255,255,0.8)';
+    ctx.font='bold 9px Courier New';ctx.textAlign='center';
+    ctx.fillText('ENZYME',cx,e.y+e.h-6);
+
+    // Controls hint
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='8px Courier New';
+    ctx.fillText('← →',cx,e.y+e.h+14);
+  }
+
+  function drawBridge(){
+    const placed=state.bridgeSlots.length;
+    const total=state.slotsNeeded;
+    const bY=state.bridgeY;
+
+    // Draw empty slot outlines
+    state.slotPositions.forEach((sx,i)=>{
+      const filled=i<placed;
+      ctx.save();
+      ctx.globalAlpha=filled?1:0.2;
+      if(filled){
+        // Filled segment — AA monomer locked in
+        const aa=state.bridgeSlots[i];
+        const col=aa?({nonpolar:'#fbbf24',polar:'#60a5fa',acidic:'#ef4444',basic:'#34d399'}[aa.prop]||'#94a3b8'):'#34d399';
+        ctx.shadowColor=col;ctx.shadowBlur=8;
+        ctx.beginPath();ctx.ellipse(sx,bY,14,9,0,0,Math.PI*2);
+        const g=ctx.createRadialGradient(sx,bY,2,sx,bY,14);
+        g.addColorStop(0,col+'ff');g.addColorStop(1,col+'88');
+        ctx.fillStyle=g;ctx.fill();
+        // Bond line to next
+        if(i<placed-1){
+          ctx.strokeStyle=col+'88';ctx.lineWidth=3;
+          ctx.beginPath();ctx.moveTo(sx+14,bY);ctx.lineTo(state.slotPositions[i+1]-14,bY);ctx.stroke();
+        }
+        // Active site notch on top
+        ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(sx,bY-9,5,Math.PI,0,true);ctx.stroke();
+      } else {
+        // Empty slot
+        ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+        ctx.beginPath();ctx.ellipse(sx,bY,14,9,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+      }
+      ctx.restore();
+    });
+
+    // Bridge complete banner
+    if(state.bridgeComplete){
+      ctx.save();ctx.globalAlpha=0.6+Math.sin(state.frameCount*.1)*.2;
+      ctx.fillStyle='#34d399';ctx.font='bold 11px Courier New';ctx.textAlign='center';
+      ctx.fillText('BRIDGE COMPLETE — BALL CROSSING!',state.gapStart+(state.gapEnd-state.gapStart)/2,bY-22);
+      ctx.restore();
+    }
+  }
+
+  function drawBall(){
+    const b=state.ball;
+    if(b.state==='won') return;
+    ctx.save();
+    ctx.shadowColor='#fbbf24';ctx.shadowBlur=14;
+    // Danger pulse when timer low
+    if(state.ballTimer<120&&b.state==='waiting'){
+      ctx.shadowColor='#ef4444';ctx.shadowBlur=14+Math.sin(state.frameCount*.3)*8;
+    }
+    ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    const g=ctx.createRadialGradient(b.x-4,b.y-4,2,b.x,b.y,b.r);
+    g.addColorStop(0,'#fde68a');g.addColorStop(1,'#f59e0b');
+    ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='#f97316';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='rgba(5,10,20,0.8)';ctx.font='bold 8px Courier New';
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('BALL',b.x,b.y);
+    ctx.textBaseline='alphabetic';ctx.restore();
+  }
+
+  function drawDrop(d){
+    ctx.save();
+    if(d.flash>0){ctx.shadowColor=d.flashCol;ctx.shadowBlur=22;}
+    if(d.isHeat){
+      // Heat blob — orange-red pulsing circle
+      const pulse=1+Math.sin(state.frameCount*.15+d.x)*0.12;
+      ctx.shadowColor='#ef4444';ctx.shadowBlur=16;
+      ctx.beginPath();ctx.arc(d.x,d.y,d.r*pulse,0,Math.PI*2);
+      const g=ctx.createRadialGradient(d.x-3,d.y-3,1,d.x,d.y,d.r);
+      g.addColorStop(0,'#fca5a5');g.addColorStop(0.5,'#ef4444');g.addColorStop(1,'#991b1b');
+      ctx.fillStyle=g;ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font='bold 11px Courier New';
+      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🔥',d.x,d.y);
+      ctx.font='7px Courier New';ctx.fillText('HEAT',d.x,d.y+d.r+8);
+    } else {
+      // AA monomer — circle with property color and shape
+      const col={nonpolar:'#fbbf24',polar:'#60a5fa',acidic:'#ef4444',basic:'#34d399'}[d.aa.prop]||'#94a3b8';
+      if(d.aa.site==='nonpolar'){
+        ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+        const g=ctx.createRadialGradient(d.x-3,d.y-3,2,d.x,d.y,d.r);
+        g.addColorStop(0,col+'ff');g.addColorStop(1,col+'88');
+        ctx.fillStyle=d.flash>0?d.flashCol+'ee':g;
+        ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+      } else {
+        // Triangle
+        ctx.beginPath();ctx.moveTo(d.x,d.y-d.r);ctx.lineTo(d.x+d.r*.9,d.y+d.r*.6);ctx.lineTo(d.x-d.r*.9,d.y+d.r*.6);ctx.closePath();
+        const g=ctx.createLinearGradient(d.x,d.y-d.r,d.x,d.y+d.r);
+        g.addColorStop(0,col+'ff');g.addColorStop(1,col+'88');
+        ctx.fillStyle=d.flash>0?d.flashCol+'ee':g;
+        ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+      }
+      ctx.fillStyle='rgba(5,10,20,0.85)';ctx.font='bold 9px Courier New';
+      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(d.aa.key,d.x,d.y+1);
+      ctx.textBaseline='alphabetic';
+    }
+    ctx.restore();
+  }
+
+  function gameLoop(){
+    state.animId=requestAnimationFrame(gameLoop);
+    if(!state.running) return;
+    const W=canvas.width,H=canvas.height;
+    const groundY=H-90;
+    ctx.clearRect(0,0,W,H);
+
+    // Background
+    const bg=ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#0a1628');bg.addColorStop(0.65,'#0d2040');bg.addColorStop(1,'#050a14');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+
+    state.frameCount++;
+
+    // --- ENZYME MOVEMENT ---
+    const e=state.enz;
+    if(e.frozen>0){
+      e.frozen--;
+      updateBridgeHUD();
+    } else {
+      if(keys['ArrowLeft'])  e.x=Math.max(0,e.x-e.speed);
+      if(keys['ArrowRight']) e.x=Math.min(state.gapStart-e.w,e.x+e.speed); // can't cross the gap
+    }
+
+    // --- SPAWN DROPS ---
+    state.spawnTimer++;
+    if(state.spawnTimer>=state.spawnInterval){
+      state.spawnTimer=0;
+      spawnDrop();
+      if(Math.random()<0.2) spawnDrop(); // occasional double
+    }
+
+    // --- UPDATE DROPS ---
+    state.drops=state.drops.filter(d=>{
+      if(d.done) return false;
+      d.y+=d.speed;
+      if(d.flash>0) d.flash--;
+
+      // Collision with enzyme opening
+      const inWidth =d.x>e.x+8&&d.x<e.x+e.w-8;
+      const inHeight=d.y+d.r>e.y&&d.y<e.y+e.h;
+      if(inWidth&&inHeight){
+        if(d.isHeat){
+          // Heat hits enzyme — freeze it
+          if(e.frozen===0){
+            e.frozen=360; // 6 seconds at 60fps
+            flash('🔥 ENZYME FROZEN! 6 seconds!','#ef4444');
+            d.flash=20;d.flashCol='#ef4444';
+          }
+          d.done=true;
+        } else {
+          // AA caught — add to bridge if not complete
+          if(!state.bridgeComplete&&state.bridgeSlots.length<state.slotsNeeded){
+            state.bridgeSlots.push(d.aa);
+            d.flash=20;d.flashCol='#4ade80';
+            if(state.bridgeSlots.length>=state.slotsNeeded){
+              state.bridgeComplete=true;
+              flash('🌉 BRIDGE COMPLETE!','#34d399');
+              state.ball.state='rolling';
+              state.ball.vx=-1.2-state.level*0.15;
+            }
+            updateBridgeHUD();
+          }
+          d.done=true;
+        }
+        return false;
+      }
+
+      // Fell past bottom
+      if(d.y>H+30){ d.done=true; return false; }
+      drawDrop(d);
+      return true;
+    });
+
+    // --- LEFT PLATFORM ---
+    ctx.fillStyle='#1e3a5f';ctx.fillRect(0,groundY,state.gapStart,H-groundY);
+    ctx.fillStyle='#0f4c6e';ctx.fillRect(0,groundY,state.gapStart,6);
+
+    // --- GAP ---
+    const vg=ctx.createLinearGradient(0,groundY,0,H);
+    vg.addColorStop(0,'rgba(239,68,68,0.1)');vg.addColorStop(1,'transparent');
+    ctx.fillStyle=vg;ctx.fillRect(state.gapStart,groundY,state.gapEnd-state.gapStart,H-groundY);
+
+    // --- RIGHT PLATFORM ---
+    ctx.fillStyle='#1e3a5f';ctx.fillRect(state.gapEnd,groundY,W-state.gapEnd,H-groundY);
+    ctx.fillStyle='#0f4c6e';ctx.fillRect(state.gapEnd,groundY,W-state.gapEnd,6);
+
+    // --- BRIDGE ---
+    drawBridge();
+
+    // --- ENZYME ---
+    drawEnzyme();
+
+    // --- BALL LOGIC ---
+    const b=state.ball;
+    if(b.state==='waiting'){
+      // Count down — then ball starts edging toward the gap
+      state.ballTimer--;
+      // Visual: draw timer arc around ball
+      ctx.save();ctx.strokeStyle='rgba(239,68,68,'+(state.ballTimer<120?0.8:0.3)+')';
+      ctx.lineWidth=3;ctx.beginPath();
+      ctx.arc(b.x,b.y,b.r+6,(state.ballTimer/state.ballTimerMax)*Math.PI*2-Math.PI/2,-Math.PI/2,true);
+      ctx.stroke();ctx.restore();
+      if(state.ballTimer<=0){
+        // Ball starts rolling toward gap
+        b.state='rolling';
+        b.vx=-0.8; // slow roll toward gap
+        flash('⚠️ Ball rolling — build faster!','#f97316');
+      }
+      drawBall();
+    } else if(b.state==='rolling'){
+      b.x+=b.vx;
+      // Check if over gap
+      if(b.x<state.gapEnd&&b.x>state.gapStart){
+        if(state.bridgeComplete){
+          // Bridge holds — ball rolls across bridge
+          b.y=state.bridgeY+b.r-2;
+          b.vx=-2.5-state.level*0.2;
+        } else {
+          // No bridge — ball falls
+          b.vy+=0.5;b.y+=b.vy;
+        }
+      } else if(b.x<=state.gapStart+b.r){
+        // Ball reached left side — won!
+        b.state='won';
+        state.score+=200+state.level*50;
+        flash('✓ BALL CROSSED! +'+( 200+state.level*50)+' pts','#34d399');
+        setTimeout(()=>{
+          if(state.running){ state.level++; setupLevel(state.level); }
+        },1600);
+      }
+      if(b.y>H+40&&b.state!=='won'){
+        b.state='lost';
+        state.lives--;
+        flash('💀 Ball fell into the gap!','#ef4444');
+        document.getElementById('bridgeLives').textContent='❤️'.repeat(Math.max(0,state.lives));
+        if(state.lives<=0){ setTimeout(endBridge,800); }
+        else{ setTimeout(()=>{ if(state.running)setupLevel(state.level); },1200); }
+      }
+      drawBall();
+    }
+
+    // --- LABELS ---
+    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='9px Courier New';ctx.textAlign='center';
+    ctx.fillText('← ENZYME SIDE',state.gapStart/2,groundY-10);
+    ctx.fillText('BALL SIDE →',(state.gapEnd+W)/2,groundY-10);
+
+    // Ball timer display
+    if(b.state==='waiting'&&state.ballTimer>0){
+      ctx.fillStyle=state.ballTimer<120?'#ef4444':'#f59e0b';
+      ctx.font='bold 10px Courier New';ctx.textAlign='center';
+      ctx.fillText('Ball rolls in '+Math.ceil(state.ballTimer/60)+'s…',b.x,b.y-b.r-16);
+    }
+
+    // Flash message
+    if(state.flashTimer>0){
+      state.flashTimer--;
+      ctx.save();ctx.globalAlpha=Math.min(1,state.flashTimer/25);
+      ctx.fillStyle=state.flashColor;ctx.font='bold 18px Courier New';ctx.textAlign='center';
+      ctx.shadowColor=state.flashColor;ctx.shadowBlur=12;
+      ctx.fillText(state.flashMsg,W/2,H/2-50);ctx.restore();
+    }
+
+    // Score
+    ctx.fillStyle='rgba(255,255,255,0.45)';ctx.font='10px Courier New';ctx.textAlign='right';
+    ctx.fillText('Score: '+state.score,W-14,24);
+  }
+
+  function startBridge(){
+    state.running=true;state.lives=3;state.level=1;state.score=0;
+    document.getElementById('bridgeOverlay').style.display='none';
+    setupLevel(1);
+    if(!state.animId) gameLoop();
+  }
+
+  function endBridge(){
+    state.running=false;
+    document.getElementById('bridgeOverlay').style.display='flex';
+    document.getElementById('bridgeFinalBlock').style.display='block';
+    document.getElementById('bridgeStart').style.display='none';
+    document.getElementById('bridgeRestart').style.display='inline-block';
+    document.querySelector('#bridgeOverlay h2').textContent='GAME OVER';
+    document.getElementById('bridgeFinalScore').textContent=state.score+' pts';
+    document.getElementById('bridgeFinalMsg').textContent=
+      state.score>=600?'Incredible! You really understand enzyme function!':
+      state.score>=300?'Great work! Heat is the enemy — dodge those 🔥 blobs!':
+      'Keep practicing — catch AAs to build the bridge, dodge the heat!';
+  }
+
+  document.getElementById('bridgeStart').addEventListener('click',startBridge);
+  document.getElementById('bridgeRestart').addEventListener('click',startBridge);
+  gameLoop();
+}
+
+// ── SCIENCE POPUP ─────────────────────────────────────────────
+window.showSci=function(sub,title,body,src){document.getElementById('sciSub').textContent=sub||'';document.getElementById('sciTitle').textContent=title;document.getElementById('sciBody').textContent=body;document.getElementById('sciSrc').textContent=src||'';document.getElementById('sci').classList.add('vis');};
+window.closeSci=function(){document.getElementById('sci').classList.remove('vis');};
+window.showSciPopup=window.showSci;window.closeSciPopup=window.closeSci;
+</script>
+
+<!-- Expose THREE for mini renderers -->
+<script type="module">
+import * as THREE from 'three';
+window.THREE=THREE;
+</script>
+</body>
+</html>
